@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}管理后台 — SciFigLab{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-gear-wide-connected"></i> 管理后台</h2>
+
+<!-- Server monitoring -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-activity"></i> 服务器状态</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" id="refreshStatusBtn"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+            <button class="btn btn-sm btn-outline-danger ms-1" id="sendAlertBtn"><i class="bi bi-envelope-exclamation"></i> 发送预警邮件</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3" id="serverStatusCards">
+            <div class="col-md-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted mb-1" style="font-size:.8rem">CPU 使用率</div>
+                    <div class="fs-4 fw-bold" id="statCpu">—</div>
+                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barCpu" style="width:0"></div></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted mb-1" style="font-size:.8rem">内存</div>
+                    <div class="fs-4 fw-bold" id="statMem">—</div>
+                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barMem" style="width:0"></div></div>
+                    <small class="text-muted" id="statMemDetail"></small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted mb-1" style="font-size:.8rem">磁盘</div>
+                    <div class="fs-4 fw-bold" id="statDisk">—</div>
+                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barDisk" style="width:0"></div></div>
+                    <small class="text-muted" id="statDiskDetail"></small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 text-center">
+                    <div class="text-muted mb-1" style="font-size:.8rem">数据目录</div>
+                    <div class="fs-4 fw-bold" id="statData">—</div>
+                </div>
+            </div>
+        </div>
+        <div id="alertsWrap" class="mt-2"></div>
+    </div>
+</div>
+
+<!-- Feature flags -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-toggles"></i> 功能开关</h5></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light"><tr><th>配置项</th><th>描述</th><th>当前值</th><th>操作</th></tr></thead>
+                <tbody>
+                {% for key, flag in flags.items() %}
+                <tr>
+                    <td><code>{{ key }}</code></td>
+                    <td>{{ flag.description }}</td>
+                    <td>
+                        {% if flag.value in ('true', 'false') %}
+                        <span class="badge {{ 'bg-success' if flag.value == 'true' else 'bg-secondary' }}">{{ '开' if flag.value == 'true' else '关' }}</span>
+                        {% else %}
+                        <code>{{ flag.value }}</code>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if flag.value in ('true', 'false') %}
+                        <button class="btn btn-sm {{ 'btn-outline-danger' if flag.value == 'true' else 'btn-outline-success' }} btn-toggle-flag"
+                                data-key="{{ key }}" data-val="{{ 'false' if flag.value == 'true' else 'true' }}">
+                            {{ '关闭' if flag.value == 'true' else '开启' }}
+                        </button>
+                        {% else %}
+                        <div class="input-group input-group-sm" style="width:200px">
+                            <input type="text" class="form-control flag-input" data-key="{{ key }}" value="{{ flag.value }}">
+                            <button class="btn btn-outline-primary btn-set-flag" data-key="{{ key }}">保存</button>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- User management -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-people"></i> 用户管理 <span class="text-muted">({{ user_count }})</span></h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light"><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>管理员</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+                <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.email }}</td>
+                    <td>{% if u.is_admin %}<span class="badge bg-warning text-dark">管理员</span>{% else %}-{% endif %}</td>
+                    <td><span class="badge {{ 'bg-success' if u.is_active else 'bg-danger' }}">{{ '正常' if u.is_active else '已禁用' }}</span></td>
+                    <td><small>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '-' }}</small></td>
+                    <td>
+                        {% if not u.is_admin %}
+                        <button class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} btn-toggle-user"
+                                data-uid="{{ u.id }}" data-name="{{ u.username }}">
+                            {{ '禁用' if u.is_active else '启用' }}
+                        </button>
+                        {% else %}
+                        <small class="text-muted">—</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Announcements -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-megaphone"></i> 公告管理</h5>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#annModal" id="newAnnBtn"><i class="bi bi-plus-lg"></i> 新建公告</button>
+    </div>
+    <div class="card-body p-0" id="annListWrap">
+        <p class="text-muted p-3 mb-0">加载中…</p>
+    </div>
+</div>
+
+<!-- Announcement modal -->
+<div class="modal fade" id="annModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="annModalTitle">新建公告</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="annEditId" value="">
+                <div class="mb-2"><label class="form-label mb-0">标题</label><input type="text" class="form-control form-control-sm" id="annTitle"></div>
+                <div class="mb-2"><label class="form-label mb-0">内容</label><textarea class="form-control form-control-sm" rows="3" id="annContent"></textarea></div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label mb-0">显示方式</label>
+                        <select class="form-select form-select-sm" id="annDisplayType">
+                            <option value="silent">静默横幅</option>
+                            <option value="popup">弹窗</option>
+                        </select>
+                    </div>
+                    <div class="col-6"><label class="form-label mb-0">状态</label>
+                        <select class="form-select form-select-sm" id="annStatus">
+                            <option value="draft">草稿</option>
+                            <option value="published">发布</option>
+                            <option value="ended">结束</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label mb-0">开始时间（留空=立即）</label><input type="datetime-local" class="form-control form-control-sm" id="annStartAt"></div>
+                    <div class="col-6"><label class="form-label mb-0">结束时间（留空=永久）</label><input type="datetime-local" class="form-control form-control-sm" id="annEndAt"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-sm" id="annSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Server status ──
+    function barColor(pct) { return pct >= 90 ? 'bg-danger' : (pct >= 70 ? 'bg-warning' : 'bg-success'); }
+
+    async function loadServerStatus() {
+        try {
+            var r = await fetch('/api/admin/server-status');
+            var d = await r.json();
+            var s = d.status;
+            document.getElementById('statCpu').textContent = s.cpu_percent + '%';
+            var bcpu = document.getElementById('barCpu');
+            bcpu.style.width = s.cpu_percent + '%'; bcpu.className = 'progress-bar ' + barColor(s.cpu_percent);
+
+            document.getElementById('statMem').textContent = s.memory_percent + '%';
+            var bmem = document.getElementById('barMem');
+            bmem.style.width = s.memory_percent + '%'; bmem.className = 'progress-bar ' + barColor(s.memory_percent);
+            document.getElementById('statMemDetail').textContent = s.memory_used_gb + ' / ' + s.memory_total_gb + ' GB';
+
+            document.getElementById('statDisk').textContent = s.disk_percent + '%';
+            var bdisk = document.getElementById('barDisk');
+            bdisk.style.width = s.disk_percent + '%'; bdisk.className = 'progress-bar ' + barColor(s.disk_percent);
+            document.getElementById('statDiskDetail').textContent = s.disk_used_gb + ' / ' + s.disk_total_gb + ' GB (剩余 ' + s.disk_free_gb + ' GB)';
+
+            document.getElementById('statData').textContent = s.data_dir_size_mb + ' MB';
+
+            // Alerts
+            var wrap = document.getElementById('alertsWrap');
+            if (d.alerts && d.alerts.length) {
+                var html = '';
+                d.alerts.forEach(function(a) {
+                    var cls = a.level === 'critical' ? 'alert-danger' : 'alert-warning';
+                    html += '<div class="alert '+cls+' py-1 px-2 mb-1" style="font-size:.85rem"><strong>['+a.metric+']</strong> '+a.message+'</div>';
+                });
+                wrap.innerHTML = html;
+            } else {
+                wrap.innerHTML = '<div class="alert alert-success py-1 px-2 mb-0" style="font-size:.85rem"><i class="bi bi-check-circle"></i> 服务器状态正常</div>';
+            }
+        } catch(e) {
+            document.getElementById('alertsWrap').innerHTML = '<div class="alert alert-secondary py-1 px-2 mb-0" style="font-size:.85rem">无法获取服务器状态</div>';
+        }
+    }
+    loadServerStatus();
+
+    document.getElementById('refreshStatusBtn').addEventListener('click', loadServerStatus);
+    document.getElementById('sendAlertBtn').addEventListener('click', async function() {
+        this.disabled = true;
+        try {
+            var r = await fetch('/api/admin/send-alert-email', {method:'POST'});
+            var d = await r.json();
+            alert(d.msg || (d.ok ? '发送成功' : '发送失败'));
+        } catch(e) { alert('请求失败'); }
+        this.disabled = false;
+    });
+
+    // Toggle boolean flags
+    document.querySelectorAll('.btn-toggle-flag').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var key = this.dataset.key;
+            var val = this.dataset.val;
+            this.disabled = true;
+            var resp = await fetch('/api/admin/flags', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key: key, value: val}),
+            });
+            var d = await resp.json();
+            if (d.ok) location.reload();
+            else { alert(d.detail || d.msg); this.disabled = false; }
+        });
+    });
+
+    // Set text flags
+    document.querySelectorAll('.btn-set-flag').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var key = this.dataset.key;
+            var input = document.querySelector('.flag-input[data-key="'+key+'"]');
+            this.disabled = true;
+            var resp = await fetch('/api/admin/flags', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key: key, value: input.value}),
+            });
+            var d = await resp.json();
+            if (d.ok) { this.textContent = '已保存'; setTimeout(function(){ location.reload(); }, 500); }
+            else { alert(d.detail || d.msg); this.disabled = false; }
+        });
+    });
+
+    // Toggle user active
+    document.querySelectorAll('.btn-toggle-user').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var uid = this.dataset.uid;
+            var name = this.dataset.name;
+            if (!confirm('确定要切换用户「'+name+'」的状态？')) return;
+            this.disabled = true;
+            var resp = await fetch('/api/admin/users/'+uid+'/toggle-active', {method: 'POST'});
+            var d = await resp.json();
+            if (d.ok) location.reload();
+            else { alert(d.detail || d.msg); this.disabled = false; }
+        });
+    });
+
+    // ── Announcements ──
+    var statusLabels = {draft:'草稿',published:'发布中',ended:'已结束'};
+    var typeLabels = {silent:'静默横幅',popup:'弹窗'};
+
+    async function loadAnns() {
+        var resp = await fetch('/api/admin/announcements');
+        var data = await resp.json();
+        var wrap = document.getElementById('annListWrap');
+        if (!data.length) { wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无公告。</p>'; return; }
+        var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+        html += '<thead class="table-light"><tr><th>标题</th><th>类型</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>';
+        data.forEach(function(a) {
+            var sBadge = a.status==='published'?'bg-success':(a.status==='ended'?'bg-secondary':'bg-warning text-dark');
+            html += '<tr>';
+            html += '<td><strong>'+a.title+'</strong><br><small class="text-muted">'+((a.content||'').substring(0,50))+'</small></td>';
+            html += '<td><span class="badge bg-info text-dark">'+(typeLabels[a.display_type]||a.display_type)+'</span></td>';
+            html += '<td><span class="badge '+sBadge+'">'+(statusLabels[a.status]||a.status)+'</span></td>';
+            html += '<td><small>'+(a.start_at?a.start_at.replace('T',' ').substring(0,16):'即时')+' ~ '+(a.end_at?a.end_at.replace('T',' ').substring(0,16):'永久')+'</small></td>';
+            html += '<td><button class="btn btn-sm btn-outline-primary btn-edit-ann" data-ann=\''+JSON.stringify(a)+'\'>编辑</button> ';
+            html += '<button class="btn btn-sm btn-outline-danger btn-del-ann" data-id="'+a.id+'" data-title="'+a.title+'">删除</button></td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        wrap.innerHTML = html;
+
+        wrap.querySelectorAll('.btn-edit-ann').forEach(function(b){
+            b.addEventListener('click', function(){
+                var a = JSON.parse(this.dataset.ann);
+                document.getElementById('annEditId').value = a.id;
+                document.getElementById('annTitle').value = a.title;
+                document.getElementById('annContent').value = a.content||'';
+                document.getElementById('annDisplayType').value = a.display_type;
+                document.getElementById('annStatus').value = a.status;
+                document.getElementById('annStartAt').value = a.start_at?a.start_at.substring(0,16):'';
+                document.getElementById('annEndAt').value = a.end_at?a.end_at.substring(0,16):'';
+                document.getElementById('annModalTitle').textContent = '编辑公告';
+                new bootstrap.Modal(document.getElementById('annModal')).show();
+            });
+        });
+        wrap.querySelectorAll('.btn-del-ann').forEach(function(b){
+            b.addEventListener('click', async function(){
+                if (!confirm('确定删除公告「'+this.dataset.title+'」？')) return;
+                await fetch('/api/admin/announcements/'+this.dataset.id, {method:'DELETE'});
+                loadAnns();
+            });
+        });
+    }
+    loadAnns();
+
+    document.getElementById('newAnnBtn').addEventListener('click', function(){
+        document.getElementById('annEditId').value = '';
+        document.getElementById('annTitle').value = '';
+        document.getElementById('annContent').value = '';
+        document.getElementById('annDisplayType').value = 'silent';
+        document.getElementById('annStatus').value = 'draft';
+        document.getElementById('annStartAt').value = '';
+        document.getElementById('annEndAt').value = '';
+        document.getElementById('annModalTitle').textContent = '新建公告';
+    });
+
+    document.getElementById('annSaveBtn').addEventListener('click', async function(){
+        var id = document.getElementById('annEditId').value;
+        var body = {
+            title: document.getElementById('annTitle').value,
+            content: document.getElementById('annContent').value,
+            display_type: document.getElementById('annDisplayType').value,
+            status: document.getElementById('annStatus').value,
+            start_at: document.getElementById('annStartAt').value || null,
+            end_at: document.getElementById('annEndAt').value || null,
+        };
+        this.disabled = true;
+        var url = id ? '/api/admin/announcements/'+id : '/api/admin/announcements';
+        var method = id ? 'PUT' : 'POST';
+        var resp = await fetch(url, {method: method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+        var d = await resp.json();
+        if (d.ok || d.announcement) {
+            bootstrap.Modal.getInstance(document.getElementById('annModal')).hide();
+            loadAnns();
+        } else {
+            alert(d.detail || d.msg || '保存失败');
+        }
+        this.disabled = false;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base_auth.html" %}
+{% block title %}注册 — SciFigLab{% endblock %}
+
+{% block content %}
+<h3 class="card-title text-center mb-4"><i class="bi bi-person-plus"></i> 注册</h3>
+<div id="alertBox" class="d-none"></div>
+<form id="registerForm">
+    <div class="mb-3">
+        <label for="email" class="form-label">邮箱</label>
+        <div class="input-group">
+            <input type="email" class="form-control" id="email" name="email" placeholder="your@email.com" required>
+            <button type="button" class="btn btn-outline-primary" id="sendCodeBtn">发送验证码</button>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="code" class="form-label">验证码</label>
+        <input type="text" class="form-control" id="code" name="code" maxlength="6" placeholder="6 位数字验证码" required>
+    </div>
+    <div class="mb-3">
+        <label for="username" class="form-label">用户名</label>
+        <input type="text" class="form-control" id="username" name="username" minlength="2" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">密码</label>
+        <input type="password" class="form-control" id="password" name="password" minlength="6" required>
+    </div>
+    <div class="mb-3">
+        <label for="password2" class="form-label">确认密码</label>
+        <input type="password" class="form-control" id="password2" name="password2" minlength="6" required>
+    </div>
+    <button type="submit" class="btn btn-primary w-100" id="submitBtn">注册</button>
+</form>
+<p class="text-center mt-3 mb-0">
+    已有账号？<a href="/login">登录</a>
+</p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var alertBox = document.getElementById('alertBox');
+    var sendCodeBtn = document.getElementById('sendCodeBtn');
+    var emailInput = document.getElementById('email');
+    var form = document.getElementById('registerForm');
+    var submitBtn = document.getElementById('submitBtn');
+
+    function showAlert(msg, type) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+    }
+
+    // ---- Send verification code ----
+    sendCodeBtn.addEventListener('click', async function() {
+        var email = emailInput.value.trim();
+        if (!email) { showAlert('请输入邮箱地址', 'warning'); return; }
+
+        sendCodeBtn.disabled = true;
+        sendCodeBtn.textContent = '发送中...';
+
+        try {
+            var resp = await fetch('/api/auth/send-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email, purpose: 'register'}),
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                showAlert(data.msg, 'success');
+                var seconds = 60;
+                sendCodeBtn.textContent = seconds + 's';
+                var timer = setInterval(function() {
+                    seconds--;
+                    sendCodeBtn.textContent = seconds + 's';
+                    if (seconds <= 0) {
+                        clearInterval(timer);
+                        sendCodeBtn.textContent = '发送验证码';
+                        sendCodeBtn.disabled = false;
+                    }
+                }, 1000);
+            } else {
+                showAlert(data.msg, 'danger');
+                sendCodeBtn.textContent = '发送验证码';
+                sendCodeBtn.disabled = false;
+            }
+        } catch (err) {
+            showAlert('网络错误，请稍后重试', 'danger');
+            sendCodeBtn.textContent = '发送验证码';
+            sendCodeBtn.disabled = false;
+        }
+    });
+
+    // ---- Register form submit ----
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+
+        var password = document.getElementById('password').value;
+        var password2 = document.getElementById('password2').value;
+        if (password !== password2) { showAlert('两次输入的密码不一致', 'warning'); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '注册中...';
+
+        try {
+            var resp = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    email: emailInput.value.trim(),
+                    username: document.getElementById('username').value.trim(),
+                    password: password,
+                    code: document.getElementById('code').value.trim(),
+                }),
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                showAlert(data.msg, 'success');
+                setTimeout(function() {
+                    window.location.href = '/login?msg=' + encodeURIComponent('注册成功，请登录');
+                }, 1000);
+            } else {
+                showAlert(data.msg, 'danger');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+            }
+        } catch (err) {
+            showAlert('网络错误，请稍后重试', 'danger');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '注册';
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}上传文件 — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">项目</a></li>
+        <li class="breadcrumb-item"><a href="/projects/{{ project.id }}">{{ project.name }}</a></li>
+        <li class="breadcrumb-item"><a href="/experiments/{{ experiment.id }}">{{ experiment.name }}</a></li>
+        <li class="breadcrumb-item active">上传文件</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-3"><i class="bi bi-upload"></i> 上传文件</h3>
+
+                <div id="alertBox" class="d-none"></div>
+
+                <form id="uploadForm">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="file" name="file" required
+                               accept=".log,.txt,.csv,.json,.yaml,.yml,.png,.jpg,.jpeg,.xlsx,.pdf,.md">
+                        <div class="form-text">
+                            支持格式：日志(.log .txt)、指标(.csv)、配置(.yaml .yml .json)、图片(.png .jpg .jpeg)、表格(.csv .xlsx)、其他(.pdf .md)
+                            <br>大小限制：{{ max_size_mb }}MB
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-upload"></i> 上传
+                        </button>
+                        <a href="/experiments/{{ experiment.id }}" class="btn btn-outline-secondary">返回实验</a>
+                    </div>
+                </form>
+
+                <!-- Progress -->
+                <div class="progress mt-3 d-none" id="progressWrap" style="height:24px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" role="progressbar" style="width:0%">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Existing files -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">已上传文件 <span class="text-muted" id="fileCount"></span></h5>
+            </div>
+            <div class="card-body p-0" id="fileListWrap">
+                <p class="text-muted p-3 mb-0">加载中...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var EXP_ID = {{ experiment.id }};
+
+var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',other:'bi-file-earmark'};
+
+function humanSize(b) {
+    if (b < 1024) return b+' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1)+' KB';
+    return (b/1024/1024).toFixed(1)+' MB';
+}
+function fmtDt(s) { return s ? s.replace('T',' ').substring(0,19) : '-'; }
+
+async function loadFiles() {
+    var resp = await fetch('/api/experiments/'+EXP_ID+'/files');
+    var files = await resp.json();
+    document.getElementById('fileCount').textContent = '('+files.length+')';
+    var wrap = document.getElementById('fileListWrap');
+    if (files.length === 0) {
+        wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无文件。</p>';
+        return;
+    }
+    var html = '<div class="table-responsive"><table class="table table-hover mb-0 align-middle"><thead class="table-light"><tr>';
+    html += '<th>文件名</th><th>类型</th><th>大小</th><th>上传时间</th><th>操作</th></tr></thead><tbody>';
+    files.forEach(function(f) {
+        var icon = TYPE_ICONS[f.file_type] || 'bi-file-earmark';
+        html += '<tr>';
+        html += '<td><i class="bi '+icon+' me-1"></i>'+f.original_name+'</td>';
+        html += '<td><span class="badge bg-light text-dark">'+f.file_type_label+'</span></td>';
+        html += '<td>'+humanSize(f.file_size)+'</td>';
+        html += '<td><small>'+fmtDt(f.uploaded_at)+'</small></td>';
+        html += '<td><button class="btn btn-outline-danger btn-sm btn-del-file" data-id="'+f.id+'" data-name="'+f.original_name+'"><i class="bi bi-trash"></i></button></td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+    document.querySelectorAll('.btn-del-file').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            if (!confirm('确定删除文件「'+this.dataset.name+'」？')) return;
+            var r = await fetch('/api/files/'+this.dataset.id, {method:'DELETE'});
+            var d = await r.json();
+            if (d.ok) loadFiles(); else alert(d.msg);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var alertBox = document.getElementById('alertBox');
+    var form = document.getElementById('uploadForm');
+    var submitBtn = document.getElementById('submitBtn');
+    var progressWrap = document.getElementById('progressWrap');
+    var progressBar = document.getElementById('progressBar');
+
+    function showAlert(msg, type) {
+        alertBox.className = 'alert alert-'+type;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+        var fileInput = document.getElementById('file');
+        if (!fileInput.files.length) return;
+
+        submitBtn.disabled = true;
+        progressWrap.classList.remove('d-none');
+
+        var fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/experiments/'+EXP_ID+'/upload');
+
+        xhr.upload.addEventListener('progress', function(ev) {
+            if (ev.lengthComputable) {
+                var pct = Math.round(ev.loaded / ev.total * 100);
+                progressBar.style.width = pct+'%';
+                progressBar.textContent = pct+'%';
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            submitBtn.disabled = false;
+            progressWrap.classList.add('d-none');
+            progressBar.style.width = '0%';
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.ok) {
+                    showAlert('上传成功: '+data.file.original_name, 'success');
+                    fileInput.value = '';
+                    loadFiles();
+                } else {
+                    showAlert(data.msg, 'danger');
+                }
+            } catch(err) {
+                showAlert('上传失败', 'danger');
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            submitBtn.disabled = false;
+            progressWrap.classList.add('d-none');
+            showAlert('网络错误', 'danger');
+        });
+
+        xhr.send(fd);
+    });
+
+    loadFiles();
+});
+</script>
+{% endblock %}

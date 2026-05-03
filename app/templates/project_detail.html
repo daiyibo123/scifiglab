@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">项目</a></li>
+        <li class="breadcrumb-item active">{{ project.name }}</li>
+    </ol>
+</nav>
+
+<!-- Project header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">{{ project.name }}</h2>
+        <span class="badge bg-secondary me-2">{{ project.area_label }}</span>
+        <small class="text-muted">创建于 {{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else '-' }}</small>
+    </div>
+    <div class="btn-group">
+        <a href="/projects/{{ project.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+        <button class="btn btn-outline-danger btn-sm" id="deleteProjectBtn"><i class="bi bi-trash"></i> 删除</button>
+    </div>
+</div>
+
+{% if project.description %}
+<div class="card shadow-sm mb-4">
+    <div class="card-body"><p class="mb-0">{{ project.description }}</p></div>
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form class="row g-2 align-items-end" id="filterForm">
+            <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" id="filterQ" placeholder="搜索实验名称...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterStatus">
+                    <option value="">全部状态</option>
+                    <option value="pending">待开始</option>
+                    <option value="running">进行中</option>
+                    <option value="completed">已完成</option>
+                    <option value="failed">失败</option>
+                    <option value="interrupted">中断</option>
+                    <option value="abandoned">废弃</option>
+                    <option value="paper_used">论文采用</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control form-control-sm" id="filterTag" placeholder="标签筛选...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterSort">
+                    <option value="created_desc">最新创建</option>
+                    <option value="created_asc">最早创建</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="filterBtn"><i class="bi bi-funnel"></i> 筛选</button>
+                <a href="/projects/{{ project.id }}/experiments/new" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> 新建实验</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Experiments table -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-journal-text"></i> 实验列表 <span class="text-muted" id="expCount"></span></h5>
+    </div>
+    <div class="card-body p-0" id="expTableWrap">
+        <p class="text-muted p-3 mb-0" id="expEmpty">加载中...</p>
+    </div>
+</div>
+
+<!-- Project summary -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> 项目指标摘要</h5>
+    </div>
+    <div class="card-body p-0" id="projectSummaryWrap">
+        <p class="text-muted p-3 mb-0"><span class="spinner-border spinner-border-sm"></span> 加载中…</p>
+    </div>
+</div>
+
+<!-- Delete project modal -->
+<div class="modal fade" id="deleteProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">确认删除项目</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>确定要删除项目「<strong>{{ project.name }}</strong>」吗？</p>
+                <p class="text-danger mb-0"><small>该操作不可撤销，项目下的所有实验、指标和文件将一并删除。</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteProjectBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete experiment modal -->
+<div class="modal fade" id="deleteExpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">确认删除实验</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>确定要删除实验「<strong id="deleteExpName"></strong>」吗？</p>
+                <p class="text-danger mb-0"><small>该操作不可撤销，实验下的指标和文件将一并删除。</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteExpBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var PROJECT_ID = {{ project.id }};
+var STATUS_COLORS = {pending:'warning',running:'primary',completed:'success',failed:'danger',interrupted:'secondary',abandoned:'dark',paper_used:'info'};
+var STATUS_LABELS = {pending:'待开始',running:'进行中',completed:'已完成',failed:'失败',interrupted:'中断',abandoned:'废弃',paper_used:'论文采用'};
+
+function duration(s, e) {
+    if (!s || !e) return '-';
+    var ms = new Date(e) - new Date(s);
+    if (ms < 0) return '-';
+    var sec = Math.floor(ms/1000), min = Math.floor(sec/60), hr = Math.floor(min/60), d = Math.floor(hr/24);
+    if (d > 0) return d+'天'+hr%24+'时';
+    if (hr > 0) return hr+'时'+min%60+'分';
+    if (min > 0) return min+'分'+sec%60+'秒';
+    return sec+'秒';
+}
+
+function fmtDt(s) { return s ? s.replace('T',' ').substring(0,16) : '-'; }
+
+async function loadExperiments() {
+    var q = document.getElementById('filterQ').value.trim();
+    var status = document.getElementById('filterStatus').value;
+    var tag = document.getElementById('filterTag').value.trim();
+    var sort = document.getElementById('filterSort').value;
+    var params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (status) params.set('status', status);
+    if (tag) params.set('tag', tag);
+    params.set('sort', sort);
+    var resp = await fetch('/api/projects/'+PROJECT_ID+'/experiments?'+params.toString());
+    var exps = await resp.json();
+    document.getElementById('expCount').textContent = '('+exps.length+')';
+    var wrap = document.getElementById('expTableWrap');
+    if (exps.length === 0) {
+        wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无实验。</p>';
+        return;
+    }
+    var html = '<div class="table-responsive"><table class="table table-hover mb-0 align-middle"><thead class="table-light"><tr>';
+    html += '<th>实验名称</th><th>编号</th><th>状态</th><th>标签</th><th>创建时间</th><th>开始</th><th>结束</th><th>时长</th><th>标记</th><th>操作</th>';
+    html += '</tr></thead><tbody>';
+    exps.forEach(function(e) {
+        var badges = '';
+        if (e.is_best) badges += '<span class="badge bg-warning text-dark me-1" title="最优"><i class="bi bi-star-fill"></i></span>';
+        if (e.is_paper_used) badges += '<span class="badge bg-info me-1" title="论文采用"><i class="bi bi-journal-check"></i></span>';
+        if (e.is_archived) badges += '<span class="badge bg-secondary me-1" title="已归档"><i class="bi bi-archive"></i></span>';
+        var tags = e.tags ? e.tags.split(',').map(function(t){return '<span class="badge bg-light text-dark me-1">'+t.trim()+'</span>';}).join('') : '-';
+        html += '<tr>';
+        html += '<td><a href="/experiments/'+e.id+'" class="text-decoration-none fw-bold">'+e.name+'</a></td>';
+        html += '<td><code>'+e.experiment_code+'</code></td>';
+        html += '<td><span class="badge bg-'+(STATUS_COLORS[e.status]||'secondary')+'">'+(STATUS_LABELS[e.status]||e.status)+'</span></td>';
+        html += '<td>'+tags+'</td>';
+        html += '<td><small>'+fmtDt(e.created_at)+'</small></td>';
+        html += '<td><small>'+fmtDt(e.started_at)+'</small></td>';
+        html += '<td><small>'+fmtDt(e.ended_at)+'</small></td>';
+        html += '<td><small>'+duration(e.started_at,e.ended_at)+'</small></td>';
+        html += '<td>'+badges+'</td>';
+        html += '<td class="text-nowrap">';
+        html += '<a href="/experiments/'+e.id+'/edit" class="btn btn-outline-secondary btn-sm me-1" title="编辑"><i class="bi bi-pencil"></i></a>';
+        html += '<button class="btn btn-outline-danger btn-sm btn-del-exp" data-id="'+e.id+'" data-name="'+e.name+'" title="删除"><i class="bi bi-trash"></i></button>';
+        html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+    bindDeleteExp();
+}
+
+var deleteExpId = null;
+var expModal;
+
+function bindDeleteExp() {
+    document.querySelectorAll('.btn-del-exp').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            deleteExpId = this.dataset.id;
+            document.getElementById('deleteExpName').textContent = this.dataset.name;
+            expModal.show();
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    expModal = new bootstrap.Modal(document.getElementById('deleteExpModal'));
+    var projModal = new bootstrap.Modal(document.getElementById('deleteProjectModal'));
+
+    document.getElementById('deleteProjectBtn').addEventListener('click', function(){ projModal.show(); });
+    document.getElementById('confirmDeleteProjectBtn').addEventListener('click', async function(){
+        this.disabled = true;
+        var r = await fetch('/api/projects/'+PROJECT_ID, {method:'DELETE'});
+        var d = await r.json();
+        if (d.ok) window.location.href='/projects'; else { alert(d.msg); this.disabled=false; }
+    });
+
+    document.getElementById('confirmDeleteExpBtn').addEventListener('click', async function(){
+        if (!deleteExpId) return;
+        this.disabled = true;
+        var r = await fetch('/api/experiments/'+deleteExpId, {method:'DELETE'});
+        var d = await r.json();
+        if (d.ok) { expModal.hide(); loadExperiments(); } else { alert(d.msg); }
+        this.disabled = false;
+    });
+
+    document.getElementById('filterBtn').addEventListener('click', loadExperiments);
+    document.getElementById('filterQ').addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();loadExperiments();} });
+
+    loadExperiments();
+
+    // Load project summary
+    (async function() {
+        try {
+            var resp = await fetch('/api/projects/'+PROJECT_ID+'/summary');
+            var data = await resp.json();
+            var wrap = document.getElementById('projectSummaryWrap');
+            if (!data.experiments || data.experiments.length === 0) {
+                wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无指标数据。</p>';
+                return;
+            }
+            var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+            html += '<thead class="table-light"><tr><th>实验</th>';
+            var metrics = data.metric_names || [];
+            metrics.forEach(function(m) { html += '<th>'+m+'</th>'; });
+            html += '</tr></thead><tbody>';
+            data.experiments.forEach(function(e) {
+                html += '<tr><td><a href="/experiments/'+e.experiment_id+'"><strong>'+e.experiment_name+'</strong></a></td>';
+                var mmap = {};
+                (e.metrics || []).forEach(function(m) { mmap[m.metric_name] = m; });
+                metrics.forEach(function(m) {
+                    var s = mmap[m];
+                    html += '<td>'+(s ? s.best_value.toFixed(4) : '-')+'</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            wrap.innerHTML = html;
+        } catch(e) {
+            document.getElementById('projectSummaryWrap').innerHTML = '<p class="text-muted p-3 mb-0">加载摘要失败。</p>';
+        }
+    })();
+});
+</script>
+{% endblock %}

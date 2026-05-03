@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/groups">实验组</a></li>
+        <li class="breadcrumb-item active">{{ group.name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h2 class="mb-1">{{ group.name }}</h2>
+        <span class="badge bg-light text-dark me-1">{{ group_type_labels.get(group.group_type, group.group_type) }}</span>
+        <small class="text-muted">项目: <a href="/projects/{{ project.id }}">{{ project.name }}</a></small>
+    </div>
+    <div>
+        <button class="btn btn-outline-danger btn-sm" id="deleteGroupBtn"><i class="bi bi-trash"></i> 删除组</button>
+    </div>
+</div>
+
+{% if group.description %}
+<p class="text-muted">{{ group.description }}</p>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Members -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">组内实验 <span class="text-muted" id="itemCount"></span></h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="bi bi-plus-lg"></i> 添加</button>
+            </div>
+            <div class="card-body p-0" id="itemListWrap">
+                <p class="text-muted p-3 mb-0">加载中…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick compare -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-bar-chart-line"></i> 快速对比</h5></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label mb-0" style="font-size:0.85rem">选择指标</label>
+                    <select id="groupMetricSelect" class="form-select form-select-sm">
+                        <option value="">加载中…</option>
+                    </select>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
+                        <select id="groupChartType" class="form-select form-select-sm">
+                            <option value="line" selected>折线图</option>
+                            <option value="bar">柱状图</option>
+                            <option value="scatter">散点图</option>
+                            <option value="area">面积图</option>
+                            <option value="step">阶梯图</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">导出格式</label>
+                        <select id="groupExportFmt" class="form-select form-select-sm">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="svg">SVG</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm w-100 mb-1" id="groupCompareBtn" disabled><i class="bi bi-bar-chart-line"></i> 组内对比</button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-1" id="groupExportBtn" disabled><i class="bi bi-image"></i> 导出图片</button>
+                <div id="groupCompareChart" style="height: 350px; margin-top: 10px;"></div>
+                <div id="groupCompareWarn"></div>
+            </div>
+        </div>
+
+        <!-- Paper table -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-table"></i> 论文表格</h5></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label mb-0" style="font-size:0.85rem">选择指标（多选）</label>
+                    <select id="tableMetricSelect" class="form-select form-select-sm" multiple size="4">
+                        <option disabled>加载中…</option>
+                    </select>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">小数位</label>
+                        <select id="tableDecimals" class="form-select form-select-sm">
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4" selected>4</option>
+                            <option value="6">6</option>
+                        </select>
+                    </div>
+                    <div class="col-6 d-flex flex-column justify-content-end">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="tableBoldBest" checked><label class="form-check-label" style="font-size:0.8rem">加粗最优</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="tableMarkSecond"><label class="form-check-label" style="font-size:0.8rem">标记次优</label></div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm w-100 mb-2" id="genTableBtn"><i class="bi bi-table"></i> 生成表格</button>
+                <div id="paperTableResult" style="display:none;">
+                    <div id="paperTableHtml" class="table-responsive mb-2"></div>
+                    <div class="mb-2">
+                        <label class="form-label mb-0" style="font-size:0.8rem">Markdown</label>
+                        <textarea id="paperTableMd" class="form-control form-control-sm" rows="5" readonly style="font-family:monospace;font-size:0.75rem;"></textarea>
+                        <button class="btn btn-outline-secondary btn-sm mt-1" id="copyMdBtn"><i class="bi bi-clipboard"></i> 复制 Markdown</button>
+                        <button class="btn btn-outline-secondary btn-sm mt-1" id="downloadCsvBtn"><i class="bi bi-download"></i> CSV</button>
+                        <button class="btn btn-outline-primary btn-sm mt-1" id="downloadWordBtn"><i class="bi bi-file-earmark-word"></i> Word</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add item modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">添加实验到组</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">实验</label>
+                    <select class="form-select" id="addItemExpSelect">
+                        <option value="">加载中…</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">显示名称（可选）</label>
+                    <input type="text" class="form-control form-control-sm" id="addItemDisplayName" placeholder="留空则使用实验名">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmAddItem">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var GROUP_ID = {{ group.id }};
+var PROJECT_ID = {{ project.id }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete group
+    document.getElementById('deleteGroupBtn').addEventListener('click', async function() {
+        if (!confirm('确定删除实验组？此操作不可撤销。')) return;
+        var r = await fetch('/api/groups/'+GROUP_ID, {method: 'DELETE'});
+        var d = await r.json();
+        if (d.ok) window.location.href = '/groups'; else alert(d.detail || '删除失败');
+    });
+
+    // Load items
+    async function loadItems() {
+        var resp = await fetch('/api/groups/'+GROUP_ID);
+        var data = await resp.json();
+        var items = data.items || [];
+        document.getElementById('itemCount').textContent = '('+items.length+')';
+        var wrap = document.getElementById('itemListWrap');
+        if (!items.length) {
+            wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无实验，点击「添加」按钮。</p>';
+            return;
+        }
+        var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0 align-middle">';
+        html += '<thead class="table-light"><tr><th>实验</th><th>显示名</th><th>操作</th></tr></thead><tbody>';
+        items.forEach(function(item) {
+            html += '<tr>';
+            html += '<td><a href="/experiments/'+item.experiment_id+'">'+item.experiment_name+'</a> <code>'+item.experiment_code+'</code></td>';
+            html += '<td>'+item.display_name+'</td>';
+            html += '<td><button class="btn btn-outline-danger btn-sm btn-del-item" data-id="'+item.id+'"><i class="bi bi-x-lg"></i></button></td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        wrap.innerHTML = html;
+        // bind delete
+        wrap.querySelectorAll('.btn-del-item').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                var id = this.dataset.id;
+                var r = await fetch('/api/groups/'+GROUP_ID+'/items/'+id, {method: 'DELETE'});
+                var d = await r.json();
+                if (d.ok) loadItems(); else alert(d.detail || '移除失败');
+            });
+        });
+    }
+    loadItems();
+
+    // Load experiments for add modal
+    (async function() {
+        var resp = await fetch('/api/compare/projects/'+PROJECT_ID+'/experiments');
+        var exps = await resp.json();
+        var sel = document.getElementById('addItemExpSelect');
+        sel.innerHTML = '<option value="">请选择实验</option>';
+        exps.forEach(function(e) {
+            var opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = e.name + ' ('+e.experiment_code+')';
+            sel.appendChild(opt);
+        });
+    })();
+
+    // Add item
+    document.getElementById('confirmAddItem').addEventListener('click', async function() {
+        var eid = document.getElementById('addItemExpSelect').value;
+        if (!eid) { alert('请选择实验'); return; }
+        this.disabled = true;
+        var resp = await fetch('/api/groups/'+GROUP_ID+'/items', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                experiment_id: parseInt(eid),
+                display_name: document.getElementById('addItemDisplayName').value,
+            }),
+        });
+        var d = await resp.json();
+        if (d.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+            loadItems();
+        } else {
+            alert(d.detail || d.msg || '添加失败');
+        }
+        this.disabled = false;
+    });
+
+    // Load metric names for compare
+    (async function() {
+        var resp = await fetch('/api/compare/projects/'+PROJECT_ID+'/metric-names');
+        var d = await resp.json();
+        var sel = document.getElementById('groupMetricSelect');
+        sel.innerHTML = '<option value="">请选择指标</option>';
+        (d.metric_names || []).forEach(function(n) {
+            var opt = document.createElement('option');
+            opt.value = n;
+            opt.textContent = n;
+            sel.appendChild(opt);
+        });
+        sel.addEventListener('change', function() {
+            document.getElementById('groupCompareBtn').disabled = !this.value;
+        });
+    })();
+
+    // Quick compare
+    initEmptyChart('groupCompareChart', '选择指标后点击对比');
+    document.getElementById('groupCompareBtn').addEventListener('click', async function() {
+        // Get group items for experiment_ids
+        var resp = await fetch('/api/groups/'+GROUP_ID);
+        var data = await resp.json();
+        var expIds = (data.items || []).map(function(i){ return i.experiment_id; });
+        if (!expIds.length) { alert('组内没有实验'); return; }
+        var metricName = document.getElementById('groupMetricSelect').value;
+        if (!metricName) { alert('请选择指标'); return; }
+
+        // Build styles from items
+        var styles = {};
+        (data.items || []).forEach(function(i) {
+            styles[i.experiment_id] = {
+                display_name: i.display_name,
+                color: i.curve_color || undefined,
+                line_type: i.curve_style || 'solid',
+                marker: i.marker_symbol || 'circle',
+            };
+        });
+
+        this.disabled = true;
+        try {
+            var cResp = await fetch('/api/compare/metrics', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    experiment_ids: expIds,
+                    metric_name: metricName,
+                    show_best: true,
+                    styles: styles,
+                }),
+            });
+            var cData = await cResp.json();
+
+            // render chart
+            var el = document.getElementById('groupCompareChart');
+            var chart = echarts.getInstanceByDom(el);
+            if (!chart) chart = echarts.init(el);
+            var xLabel = cData.x_axis || 'x';
+            var legendData = [];
+            var seriesArr = [];
+            var chartType = document.getElementById('groupChartType').value;
+            cData.series.forEach(function(s, idx) {
+                var color = s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+                legendData.push(s.display_name);
+                var item = { name: s.display_name, data: s.points.map(function(p){ return [p.x, p.y]; }), itemStyle: { color: color } };
+                if (chartType === 'bar') { item.type = 'bar'; item.barMaxWidth = 30; }
+                else if (chartType === 'scatter') { item.type = 'scatter'; item.symbolSize = 6; }
+                else if (chartType === 'area') { item.type = 'line'; item.smooth = true; item.areaStyle = { opacity: 0.25 }; item.lineStyle = { color: color, width: 2 }; }
+                else if (chartType === 'step') { item.type = 'line'; item.step = 'middle'; item.symbol = 'none'; item.lineStyle = { color: color, width: 2 }; }
+                else { item.type = 'line'; item.symbol = 'circle'; item.symbolSize = 4; item.lineStyle = { color: color, width: 2 }; }
+                seriesArr.push(item);
+                if (s.best_point) {
+                    seriesArr.push({
+                        name: s.display_name+' best', type: 'scatter',
+                        data: [[s.best_point.x, s.best_point.y]],
+                        symbol: 'pin', symbolSize: 24, itemStyle: { color: color },
+                        label: { show: true, formatter: function(p){ return p.value[1].toFixed(4); }, position: 'top', fontSize: 9 },
+                    });
+                }
+            });
+            chart.setOption({
+                title: { text: metricName, left: 'center', textStyle: { fontSize: 13 } },
+                tooltip: { trigger: 'axis' },
+                legend: { data: legendData, bottom: 0, type: 'scroll' },
+                grid: { left: 50, right: 20, top: 40, bottom: 45 },
+                xAxis: { type: 'value', name: xLabel },
+                yAxis: { type: 'value', scale: true },
+                dataZoom: [{ type: 'inside' }],
+                toolbox: { right: 5, feature: { saveAsImage: { title: 'PNG' } } },
+                color: DEFAULT_COLORS,
+                series: seriesArr,
+            }, true);
+
+            var warnDiv = document.getElementById('groupCompareWarn');
+            if (cData.warnings && cData.warnings.length) {
+                warnDiv.innerHTML = '<div class="alert alert-warning py-1 px-2 mt-1 mb-0" style="font-size:0.8rem">'+cData.warnings.join('; ')+'</div>';
+            } else {
+                warnDiv.innerHTML = '';
+            }
+        } catch(e) {
+            document.getElementById('groupCompareWarn').innerHTML = '<div class="alert alert-danger py-1 px-2 mt-1 mb-0"><small>对比失败</small></div>';
+        }
+        document.getElementById('groupExportBtn').disabled = false;
+        this.disabled = false;
+    });
+
+    // Export group chart
+    document.getElementById('groupExportBtn').addEventListener('click', function() {
+        var el = document.getElementById('groupCompareChart');
+        var inst = echarts.getInstanceByDom(el);
+        if (!inst) return;
+        var fmt = document.getElementById('groupExportFmt').value;
+        if (fmt === 'pdf') {
+            var url = inst.getDataURL({ type: 'png', pixelRatio: 3, backgroundColor: '#fff' });
+            var win = window.open('');
+            win.document.write('<html><head><title>Chart</title></head><body><img src="'+url+'" style="max-width:100%"><p style="text-align:center;margin-top:10px"><small>Ctrl+P 打印为 PDF</small></p></body></html>');
+        } else {
+            var type = fmt === 'jpg' ? 'jpeg' : (fmt === 'svg' ? 'svg' : 'png');
+            var url = inst.getDataURL({ type: type, pixelRatio: 2, backgroundColor: '#fff' });
+            var a = document.createElement('a'); a.href = url; a.download = 'group_chart.'+fmt; a.click();
+        }
+    });
+
+    // ── Paper table ─────────────────────────────────────────────────────
+    // Load available metrics for paper table
+    (async function() {
+        var resp = await fetch('/api/groups/'+GROUP_ID+'/available-metrics');
+        var d = await resp.json();
+        var sel = document.getElementById('tableMetricSelect');
+        sel.innerHTML = '';
+        (d.metric_names || []).forEach(function(n) {
+            var opt = document.createElement('option');
+            opt.value = n;
+            opt.textContent = n;
+            sel.appendChild(opt);
+        });
+    })();
+
+    document.getElementById('genTableBtn').addEventListener('click', async function() {
+        var metricNames = Array.from(document.getElementById('tableMetricSelect').selectedOptions).map(function(o){ return o.value; });
+        if (!metricNames.length) { alert('请选择至少一个指标'); return; }
+        var decimals = parseInt(document.getElementById('tableDecimals').value);
+        var boldBest = document.getElementById('tableBoldBest').checked;
+        var markSecond = document.getElementById('tableMarkSecond').checked;
+
+        this.disabled = true;
+        try {
+            var resp = await fetch('/api/groups/'+GROUP_ID+'/table', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    metric_names: metricNames,
+                    decimals: decimals,
+                    bold_best: boldBest,
+                    mark_second: markSecond,
+                }),
+            });
+            var data = await resp.json();
+            if (data.detail) { alert(data.detail); this.disabled = false; return; }
+
+            // Render HTML table
+            var directions = data.directions || {};
+            var bestMap = data.best_map || {};
+            var html = '<table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">';
+            html += '<thead class="table-light"><tr><th>Method</th>';
+            metricNames.forEach(function(m) {
+                var arrow = (directions[m] === 'lower_better') ? ' ↓' : ' ↑';
+                html += '<th>'+m+arrow+'</th>';
+            });
+            html += '</tr></thead><tbody>';
+            (data.rows || []).forEach(function(row, idx) {
+                html += '<tr><td><strong>'+row.display_name+'</strong></td>';
+                metricNames.forEach(function(m) {
+                    var val = row.values[m];
+                    var formatted = val !== null && val !== undefined ? val.toFixed(decimals) : '-';
+                    var isBest = bestMap[m] && bestMap[m].row_idx === idx;
+                    if (isBest && boldBest) formatted = '<strong>'+formatted+'</strong>';
+                    html += '<td>'+formatted+'</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('paperTableHtml').innerHTML = html;
+            document.getElementById('paperTableMd').value = data.markdown || '';
+            document.getElementById('paperTableResult').style.display = 'block';
+
+            // Store data for downloads
+            window._paperCsvText = data.csv_text || '';
+            window._paperMetricNames = metricNames;
+            window._paperDecimals = decimals;
+            window._paperBoldBest = boldBest;
+        } catch(e) {
+            alert('生成失败');
+        }
+        this.disabled = false;
+    });
+
+    // Copy markdown
+    document.getElementById('copyMdBtn').addEventListener('click', function() {
+        var ta = document.getElementById('paperTableMd');
+        ta.select();
+        document.execCommand('copy');
+        this.innerHTML = '<i class="bi bi-check"></i> 已复制';
+        var btn = this;
+        setTimeout(function(){ btn.innerHTML = '<i class="bi bi-clipboard"></i> 复制 Markdown'; }, 1500);
+    });
+
+    // Download CSV
+    document.getElementById('downloadCsvBtn').addEventListener('click', function() {
+        var csv = window._paperCsvText || '';
+        if (!csv) { alert('请先生成表格'); return; }
+        var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'paper_table.csv';
+        link.click();
+    });
+
+    // Download Word
+    document.getElementById('downloadWordBtn').addEventListener('click', function() {
+        var names = window._paperMetricNames;
+        if (!names || !names.length) { alert('请先生成表格'); return; }
+        var params = new URLSearchParams();
+        names.forEach(function(n){ params.append('metric_names', n); });
+        params.append('decimals', window._paperDecimals || 4);
+        params.append('bold_best', window._paperBoldBest !== false);
+        window.location.href = '/api/groups/'+GROUP_ID+'/table/download-word?'+params.toString();
+    });
+});
+</script>
+{% endblock %}

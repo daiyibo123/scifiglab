@@ -1,0 +1,72 @@
+{% extends "base_auth.html" %}
+{% block title %}登录 — SciFigLab{% endblock %}
+
+{% block content %}
+<h3 class="card-title text-center mb-4"><i class="bi bi-box-arrow-in-right"></i> 登录</h3>
+<div id="alertBox" class="d-none"></div>
+<form id="loginForm">
+    <div class="mb-3">
+        <label for="email" class="form-label">邮箱</label>
+        <input type="email" class="form-control" id="email" name="email" placeholder="your@email.com" required>
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">密码</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary w-100" id="submitBtn">登录</button>
+</form>
+<p class="text-center mt-3 mb-0">
+    还没有账号？<a href="/register">注册</a>
+</p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var alertBox = document.getElementById('alertBox');
+    var form = document.getElementById('loginForm');
+    var submitBtn = document.getElementById('submitBtn');
+
+    function showAlert(msg, type) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+    }
+
+    // Show message from query params (e.g. after registration)
+    var params = new URLSearchParams(window.location.search);
+    var msg = params.get('msg');
+    if (msg) showAlert(msg, 'success');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '登录中...';
+
+        try {
+            var resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    email: document.getElementById('email').value.trim(),
+                    password: document.getElementById('password').value,
+                }),
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                window.location.href = '/dashboard';
+            } else {
+                showAlert(data.msg, 'danger');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+            }
+        } catch (err) {
+            showAlert('网络错误，请稍后重试', 'danger');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '登录';
+        }
+    });
+});
+</script>
+{% endblock %}

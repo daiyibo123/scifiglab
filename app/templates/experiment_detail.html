@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+{% block title %}{{ experiment.name }} — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">项目</a></li>
+        <li class="breadcrumb-item"><a href="/projects/{{ project.id }}">{{ project.name }}</a></li>
+        <li class="breadcrumb-item active">{{ experiment.name }}</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">
+            {{ experiment.name }}
+            {% if experiment.is_best %}<span class="badge bg-warning text-dark ms-2" title="最优实验"><i class="bi bi-star-fill"></i> 最优</span>{% endif %}
+            {% if experiment.is_paper_used %}<span class="badge bg-info ms-2" title="论文采用"><i class="bi bi-journal-check"></i> 论文采用</span>{% endif %}
+            {% if experiment.is_archived %}<span class="badge bg-secondary ms-2"><i class="bi bi-archive"></i> 已归档</span>{% endif %}
+        </h2>
+        <code class="me-2">{{ experiment.experiment_code }}</code>
+        <span class="badge bg-{{ status_colors.get(experiment.status, 'secondary') }}">{{ status_labels.get(experiment.status, experiment.status) }}</span>
+    </div>
+    <div class="btn-group">
+        <a href="/experiments/{{ experiment.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+        <button class="btn btn-outline-danger btn-sm" id="deleteExpBtn"><i class="bi bi-trash"></i> 删除</button>
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div class="mb-4">
+    <button class="btn btn-sm {% if experiment.is_best %}btn-warning{% else %}btn-outline-warning{% endif %}" id="toggleBestBtn">
+        <i class="bi bi-star{% if experiment.is_best %}-fill{% endif %}"></i>
+        {% if experiment.is_best %}取消最优{% else %}标记最优{% endif %}
+    </button>
+    <button class="btn btn-sm {% if experiment.is_paper_used %}btn-info{% else %}btn-outline-info{% endif %}" id="togglePaperBtn">
+        <i class="bi bi-journal-check"></i>
+        {% if experiment.is_paper_used %}取消论文采用{% else %}标记论文采用{% endif %}
+    </button>
+    <button class="btn btn-sm {% if experiment.is_archived %}btn-secondary{% else %}btn-outline-secondary{% endif %}" id="toggleArchiveBtn">
+        <i class="bi bi-archive"></i>
+        {% if experiment.is_archived %}取消归档{% else %}归档{% endif %}
+    </button>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: info -->
+    <div class="col-lg-7">
+        <!-- Basic info -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0">基本信息</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><th class="ps-3" style="width:140px">实验名称</th><td>{{ experiment.name }}</td></tr>
+                        <tr><th class="ps-3">实验编号</th><td><code>{{ experiment.experiment_code }}</code></td></tr>
+                        <tr><th class="ps-3">所属项目</th><td><a href="/projects/{{ project.id }}">{{ project.name }}</a></td></tr>
+                        <tr><th class="ps-3">状态</th><td><span class="badge bg-{{ status_colors.get(experiment.status, 'secondary') }}">{{ status_labels.get(experiment.status, experiment.status) }}</span></td></tr>
+                        <tr><th class="ps-3">标签</th><td>
+                            {% if experiment.tags %}
+                                {% for tag in experiment.tags.split(',') %}
+                                <span class="badge bg-light text-dark me-1">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            {% else %}-{% endif %}
+                        </td></tr>
+                        <tr><th class="ps-3">创建时间</th><td>{{ experiment.created_at.strftime('%Y-%m-%d %H:%M:%S') if experiment.created_at else '-' }}</td></tr>
+                        <tr><th class="ps-3">更新时间</th><td>{{ experiment.updated_at.strftime('%Y-%m-%d %H:%M:%S') if experiment.updated_at else '-' }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Time info -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0">时间信息</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><th class="ps-3" style="width:140px">开始时间</th><td>{{ experiment.started_at.strftime('%Y-%m-%d %H:%M:%S') if experiment.started_at else '-' }}</td></tr>
+                        <tr><th class="ps-3">结束时间</th><td>{{ experiment.ended_at.strftime('%Y-%m-%d %H:%M:%S') if experiment.ended_at else '-' }}</td></tr>
+                        <tr><th class="ps-3">运行时长</th><td id="durationCell">-</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Description & Note -->
+        {% if experiment.description %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0">实验描述</h5></div>
+            <div class="card-body"><p class="mb-0" style="white-space:pre-wrap;">{{ experiment.description }}</p></div>
+        </div>
+        {% endif %}
+
+        {% if experiment.note %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0">备注</h5></div>
+            <div class="card-body"><p class="mb-0" style="white-space:pre-wrap;">{{ experiment.note }}</p></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right column: metadata + charts + files -->
+    <div class="col-lg-5">
+        <!-- Metadata JSON -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0">自定义参数</h5></div>
+            <div class="card-body">
+                {% if metadata %}
+                <table class="table table-sm table-borderless mb-0">
+                    <tbody>
+                        {% for k, v in metadata.items() %}
+                        <tr><th style="width:45%"><code>{{ k }}</code></th><td>{{ v }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted mb-0">暂无自定义参数。</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metrics chart -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-graph-up"></i> 指标曲线</h5></div>
+            <div class="card-body">
+                <div id="metricControls">
+                    <div class="mb-2">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.85rem">选择指标</label>
+                        <select id="metricSelect" class="form-select form-select-sm" multiple size="4">
+                            <option disabled>加载中…</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label mb-0" style="font-size:0.8rem">横轴</label>
+                            <select id="xAxisSelect" class="form-select form-select-sm">
+                                <option value="auto" selected>Auto</option>
+                                <option value="epoch">Epoch</option>
+                                <option value="step">Step</option>
+                                <option value="time">Time</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label mb-0" style="font-size:0.8rem">平滑窗口</label>
+                            <select id="smoothSelect" class="form-select form-select-sm">
+                                <option value="1" selected>1 (无)</option>
+                                <option value="3">3</option>
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                            </select>
+                        </div>
+                        <div class="col-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showBestCheck" checked>
+                                <label class="form-check-label" for="showBestCheck" style="font-size:0.8rem">最佳点</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
+                            <select id="chartTypeSelect" class="form-select form-select-sm">
+                                <option value="line" selected>折线图</option>
+                                <option value="bar">柱状图</option>
+                                <option value="scatter">散点图</option>
+                                <option value="area">面积图</option>
+                                <option value="step">阶梯图</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label mb-0" style="font-size:0.8rem">导出格式</label>
+                            <select id="exportFormatSelect" class="form-select form-select-sm">
+                                <option value="png" selected>PNG</option>
+                                <option value="jpg">JPG</option>
+                                <option value="svg">SVG 矢量图</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mb-2">
+                        <button class="btn btn-primary btn-sm" id="drawChartBtn"><i class="bi bi-graph-up"></i> 绘制</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="exportCsvBtn" disabled><i class="bi bi-download"></i> CSV</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="exportImgBtn" disabled><i class="bi bi-image"></i> 导出图片</button>
+                    </div>
+                </div>
+                <div id="metricsChart" style="height: 360px;"></div>
+                <div id="chartWarnings"></div>
+            </div>
+        </div>
+
+        <!-- Metrics summary table -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-table"></i> 指标摘要</h5></div>
+            <div class="card-body p-0" id="metricsSummaryTable">
+                <p class="text-muted p-3 mb-0">加载中…</p>
+            </div>
+        </div>
+
+        <!-- Files -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">文件 <span class="text-muted" id="fileCount"></span></h5>
+                <a href="/experiments/{{ experiment.id }}/upload" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload"></i> 上传</a>
+            </div>
+            <div class="card-body p-0" id="fileListWrap">
+                <p class="text-muted p-3 mb-0">加载中...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">确认删除</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p>确定要删除实验「<strong>{{ experiment.name }}</strong>」吗？</p>
+                <p class="text-danger mb-0"><small>该操作不可撤销，实验下的指标和文件将一并删除。</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var EXP_ID = {{ experiment.id }};
+var PROJECT_ID = {{ project.id }};
+
+// Duration
+(function(){
+    var s = '{{ experiment.started_at.isoformat() if experiment.started_at else "" }}';
+    var e = '{{ experiment.ended_at.isoformat() if experiment.ended_at else "" }}';
+    if (s && e) {
+        var ms = new Date(e) - new Date(s);
+        if (ms >= 0) {
+            var sec=Math.floor(ms/1000), min=Math.floor(sec/60), hr=Math.floor(min/60), d=Math.floor(hr/24);
+            var txt = '';
+            if (d>0) txt=d+'天'+(hr%24)+'时'+(min%60)+'分';
+            else if (hr>0) txt=hr+'时'+(min%60)+'分'+(sec%60)+'秒';
+            else if (min>0) txt=min+'分'+(sec%60)+'秒';
+            else txt=sec+'秒';
+            document.getElementById('durationCell').textContent = txt;
+        }
+    }
+})();
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete
+    var modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    document.getElementById('deleteExpBtn').addEventListener('click', function(){ modal.show(); });
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function(){
+        this.disabled = true;
+        var r = await fetch('/api/experiments/'+EXP_ID, {method:'DELETE'});
+        var d = await r.json();
+        if (d.ok) window.location.href='/projects/'+PROJECT_ID; else { alert(d.msg); this.disabled=false; }
+    });
+
+    // Toggle buttons
+    async function toggle(url, value) {
+        await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:value})});
+        location.reload();
+    }
+    document.getElementById('toggleBestBtn').addEventListener('click', function(){
+        toggle('/api/experiments/'+EXP_ID+'/toggle-best', {{ 'false' if experiment.is_best else 'true' }});
+    });
+    document.getElementById('togglePaperBtn').addEventListener('click', function(){
+        toggle('/api/experiments/'+EXP_ID+'/toggle-paper', {{ 'false' if experiment.is_paper_used else 'true' }});
+    });
+    document.getElementById('toggleArchiveBtn').addEventListener('click', function(){
+        toggle('/api/experiments/'+EXP_ID+'/toggle-archive', {{ 'false' if experiment.is_archived else 'true' }});
+    });
+
+    // ── Metric chart ──
+    var _metricsChartInst = null;
+    var _lastChartData = null;
+    (async function loadMetricNames() {
+        try {
+            var resp = await fetch('/api/experiments/'+EXP_ID+'/metric-names');
+            var d = await resp.json();
+            var sel = document.getElementById('metricSelect');
+            sel.innerHTML = '';
+            if (!d.metric_names || d.metric_names.length === 0) {
+                sel.innerHTML = '<option disabled>暂无指标，请先解析日志或导入 CSV</option>';
+                initEmptyChart('metricsChart', '暂无指标数据');
+                return;
+            }
+            d.metric_names.forEach(function(n, i) {
+                var opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                if (i < 4) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            // auto draw
+            document.getElementById('drawChartBtn').click();
+        } catch(e) {
+            initEmptyChart('metricsChart', '加载指标失败');
+        }
+    })();
+
+    // Auto-load summary table from API
+    (async function loadSummary() {
+        try {
+            var resp = await fetch('/api/experiments/'+EXP_ID+'/summary');
+            var d = await resp.json();
+            if (d.metrics && d.metrics.length) {
+                var el = document.getElementById('metricsSummaryTable');
+                var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+                html += '<thead class="table-light"><tr><th>指标名</th><th>方向</th><th>最佳值</th><th>最佳 Epoch</th><th>最佳 Step</th><th>最后值</th><th>数据量</th></tr></thead><tbody>';
+                d.metrics.forEach(function(m) {
+                    var dir = m.direction === 'lower_better' ? '↓ 越小越好' : '↑ 越大越好';
+                    html += '<tr><td><strong>'+m.metric_name+'</strong></td><td><small>'+dir+'</small></td>';
+                    html += '<td>'+m.best_value.toFixed(6)+'</td>';
+                    html += '<td>'+(m.best_epoch !== null ? m.best_epoch : '-')+'</td>';
+                    html += '<td>'+(m.best_step !== null ? m.best_step : '-')+'</td>';
+                    html += '<td>'+m.last_value.toFixed(6)+'</td>';
+                    html += '<td>'+m.record_count+'</td></tr>';
+                });
+                html += '</tbody></table></div>';
+                el.innerHTML = html;
+            } else {
+                document.getElementById('metricsSummaryTable').innerHTML = '<p class="text-muted p-3 mb-0">暂无指标数据。</p>';
+            }
+        } catch(e) {}
+    })();
+
+    document.getElementById('drawChartBtn').addEventListener('click', async function() {
+        var sel = document.getElementById('metricSelect');
+        var names = Array.from(sel.selectedOptions).map(function(o){ return o.value; });
+        if (!names.length) { alert('请至少选择一个指标'); return; }
+        var xAxis = document.getElementById('xAxisSelect').value;
+        var sw = document.getElementById('smoothSelect').value;
+        var showBest = document.getElementById('showBestCheck').checked;
+        var params = new URLSearchParams();
+        names.forEach(function(n){ params.append('metric_names', n); });
+        params.set('x_axis', xAxis);
+        params.set('smooth_window', sw);
+        params.set('show_best', showBest);
+        try {
+            var resp = await fetch('/api/experiments/'+EXP_ID+'/metrics?'+params.toString());
+            var data = await resp.json();
+            _lastChartData = data;
+            var chartType = document.getElementById('chartTypeSelect').value;
+            _metricsChartInst = renderMetricsChart('metricsChart', data, showBest, chartType);
+            renderSummaryTable('metricsSummaryTable', data.series);
+            document.getElementById('exportCsvBtn').disabled = false;
+            document.getElementById('exportImgBtn').disabled = false;
+            var warnDiv = document.getElementById('chartWarnings');
+            if (data.warnings && data.warnings.length) {
+                warnDiv.innerHTML = '<div class="alert alert-warning py-1 px-2 mt-2 mb-0" style="font-size:0.8rem"><i class="bi bi-exclamation-triangle"></i> ' + data.warnings.join('; ') + '</div>';
+            } else {
+                warnDiv.innerHTML = '';
+            }
+        } catch(e) {
+            document.getElementById('chartWarnings').innerHTML = '<div class="alert alert-danger py-1 px-2 mt-2 mb-0"><small>请求失败</small></div>';
+        }
+    });
+
+    document.getElementById('exportCsvBtn').addEventListener('click', function() {
+        var sel = document.getElementById('metricSelect');
+        var names = Array.from(sel.selectedOptions).map(function(o){ return o.value; });
+        var xAxis = document.getElementById('xAxisSelect').value;
+        var params = new URLSearchParams();
+        names.forEach(function(n){ params.append('metric_names', n); });
+        params.set('x_axis', xAxis);
+        window.open('/api/experiments/'+EXP_ID+'/metrics/export-csv?'+params.toString(), '_blank');
+    });
+
+    document.getElementById('exportImgBtn').addEventListener('click', function() {
+        if (!_metricsChartInst) return;
+        var fmt = document.getElementById('exportFormatSelect').value;
+        if (fmt === 'svg') {
+            var svgInst = echarts.getInstanceByDom(document.getElementById('metricsChart'));
+            var svgUrl = _metricsChartInst.getDataURL({ type: 'svg', pixelRatio: 2, backgroundColor: '#fff' });
+            var a = document.createElement('a');
+            a.href = svgUrl;
+            a.download = 'experiment_'+EXP_ID+'_chart.svg';
+            a.click();
+        } else if (fmt === 'pdf') {
+            var url = _metricsChartInst.getDataURL({ type: 'png', pixelRatio: 3, backgroundColor: '#fff' });
+            var win = window.open('');
+            win.document.write('<html><head><title>Chart PDF</title></head><body>');
+            win.document.write('<img src="'+url+'" style="max-width:100%">');
+            win.document.write('<p style="text-align:center;margin-top:10px"><small>使用浏览器 Ctrl+P 打印为 PDF</small></p>');
+            win.document.write('</body></html>');
+        } else {
+            var type = fmt === 'jpg' ? 'jpeg' : 'png';
+            var url = _metricsChartInst.getDataURL({ type: type, pixelRatio: 2, backgroundColor: '#fff' });
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'experiment_'+EXP_ID+'_chart.'+fmt;
+            a.click();
+        }
+    });
+
+    // File list
+    var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',other:'bi-file-earmark'};
+    function humanSize(b) {
+        if (b<1024) return b+' B';
+        if (b<1024*1024) return (b/1024).toFixed(1)+' KB';
+        return (b/1024/1024).toFixed(1)+' MB';
+    }
+    function fmtDt(s) { return s ? s.replace('T',' ').substring(0,19) : '-'; }
+
+    async function loadFiles() {
+        var resp = await fetch('/api/experiments/'+EXP_ID+'/files');
+        var files = await resp.json();
+        document.getElementById('fileCount').textContent = '('+files.length+')';
+        var wrap = document.getElementById('fileListWrap');
+        if (files.length === 0) {
+            wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无文件。</p>';
+            return;
+        }
+        var PARSABLE_EXTS = ['.log','.txt','.csv','.json'];
+        var CONFIG_EXTS = ['.yaml','.yml','.json','.toml','.ini','.cfg','.conf'];
+        var html = '<div class="list-group list-group-flush">';
+        files.forEach(function(f) {
+            var icon = TYPE_ICONS[f.file_type] || 'bi-file-earmark';
+            var parsable = PARSABLE_EXTS.indexOf(f.file_ext) >= 0;
+            var isConfig = CONFIG_EXTS.indexOf(f.file_ext) >= 0;
+            html += '<div class="list-group-item">';
+            html += '<div class="d-flex justify-content-between align-items-center">';
+            html += '<div><i class="bi '+icon+' me-2"></i><strong>'+f.original_name+'</strong>';
+            html += ' <span class="badge bg-light text-dark ms-1">'+f.file_type_label+'</span>';
+            html += ' <small class="text-muted ms-2">'+humanSize(f.file_size)+' · '+fmtDt(f.uploaded_at)+'</small></div>';
+            html += '<div class="btn-group btn-group-sm">';
+            if (f.file_ext === '.csv') {
+                html += '<button class="btn btn-outline-primary btn-import-csv" data-id="'+f.id+'" data-name="'+f.original_name+'" title="导入 CSV 指标"><i class="bi bi-table"></i> 导入指标</button>';
+            }
+            if (isConfig) {
+                html += '<button class="btn btn-outline-info btn-parse-config" data-id="'+f.id+'" data-name="'+f.original_name+'" title="解析配置文件"><i class="bi bi-gear"></i> 配置</button>';
+            }
+            if (parsable) {
+                html += '<button class="btn btn-outline-success btn-parse" data-id="'+f.id+'" data-name="'+f.original_name+'" title="智能解析日志"><i class="bi bi-cpu"></i> 解析</button>';
+            }
+            html += '<a class="btn btn-outline-secondary" href="/api/files/'+f.id+'/download" title="下载"><i class="bi bi-download"></i></a>';
+            html += '<button class="btn btn-outline-danger btn-del-file" data-id="'+f.id+'" data-name="'+f.original_name+'"><i class="bi bi-trash"></i></button>';
+            html += '</div></div>';
+            // parse result container
+            if (parsable || isConfig) {
+                html += '<div class="parse-result mt-2 d-none" id="parse-result-'+f.id+'"></div>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        wrap.innerHTML = html;
+
+        // Delete handlers
+        document.querySelectorAll('.btn-del-file').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                if (!confirm('确定删除文件「'+this.dataset.name+'」？')) return;
+                var r = await fetch('/api/files/'+this.dataset.id, {method:'DELETE'});
+                var d = await r.json();
+                if (d.ok) loadFiles(); else alert(d.msg);
+            });
+        });
+
+        // CSV import handlers
+        document.querySelectorAll('.btn-import-csv').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var fid = this.dataset.id;
+                var fname = this.dataset.name;
+                var resultDiv = document.getElementById('parse-result-'+fid);
+                resultDiv.classList.remove('d-none');
+                resultDiv.innerHTML = '<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm"></div> <small>正在导入 '+fname+'…</small></div>';
+                doImportCsv(fid, fname, false, resultDiv);
+            });
+        });
+
+        // Parse handlers
+        document.querySelectorAll('.btn-parse').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var fid = this.dataset.id;
+                var fname = this.dataset.name;
+                var resultDiv = document.getElementById('parse-result-'+fid);
+                resultDiv.classList.remove('d-none');
+                resultDiv.innerHTML = '<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm"></div> <small>正在解析 '+fname+'…</small></div>';
+                // show overwrite option
+                doParseLog(fid, fname, false, resultDiv);
+            });
+        });
+
+        // Config parse handlers
+        document.querySelectorAll('.btn-parse-config').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                var fid = this.dataset.id;
+                var fname = this.dataset.name;
+                var resultDiv = document.getElementById('parse-result-'+fid);
+                resultDiv.classList.remove('d-none');
+                resultDiv.innerHTML = '<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm"></div> <small>正在解析配置 '+fname+'…</small></div>';
+                try {
+                    var resp = await fetch('/api/experiments/'+EXP_ID+'/parse-config/'+fid);
+                    var data = await resp.json();
+                    if (!data.ok) {
+                        resultDiv.innerHTML = '<div class="alert alert-warning py-1 px-2 mb-0"><small>'+data.msg+'</small></div>';
+                        return;
+                    }
+                    var params = data.params || {};
+                    var keys = Object.keys(params);
+                    var h = '<div class="alert alert-info py-1 px-2 mb-1"><small><i class="bi bi-check-circle"></i> 解析到 '+keys.length+' 个参数 ('+data.format+')</small></div>';
+                    h += '<div class="table-responsive" style="max-height:300px;overflow-y:auto"><table class="table table-sm table-bordered mb-0" style="font-size:0.8rem">';
+                    h += '<thead class="table-light"><tr><th>参数</th><th>值</th></tr></thead><tbody>';
+                    keys.forEach(function(k) {
+                        h += '<tr><td><code>'+k+'</code></td><td>'+params[k]+'</td></tr>';
+                    });
+                    h += '</tbody></table></div>';
+                    resultDiv.innerHTML = h;
+                } catch(e) {
+                    resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>解析失败</small></div>';
+                }
+            });
+        });
+    }
+    // Parse log function
+    async function doParseLog(fileId, fileName, overwrite, resultDiv) {
+        try {
+            var resp = await fetch('/api/experiments/'+EXP_ID+'/parse-log', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({file_id: parseInt(fileId), overwrite: overwrite}),
+            });
+            var data = await resp.json();
+            if (!data.ok && resp.status >= 400) {
+                resultDiv.innerHTML = '<div class="alert alert-danger alert-sm py-1 px-2 mb-0"><small><i class="bi bi-x-circle"></i> '+data.msg+'</small></div>';
+                return;
+            }
+            var html = '<div class="alert alert-'+(data.parsed_records_count > 0 ? 'success' : 'warning')+' py-2 px-3 mb-0">';
+            html += '<div class="fw-bold mb-1"><i class="bi bi-cpu"></i> 解析结果</div>';
+            html += '<div class="row g-2" style="font-size:0.85rem">';
+            html += '<div class="col-auto"><strong>解析指标：</strong>'+data.parsed_records_count+' 条</div>';
+            html += '<div class="col-auto"><strong>总行数：</strong>'+data.line_count+'</div>';
+            html += '<div class="col-auto"><strong>有效行：</strong>'+data.parsed_line_count+'</div>';
+            html += '<div class="col-auto"><strong>跳过行：</strong>'+data.skipped_line_count+'</div>';
+            if (data.epoch_min !== null) html += '<div class="col-auto"><strong>Epoch：</strong>'+data.epoch_min+' ~ '+data.epoch_max+'</div>';
+            if (data.step_min !== null) html += '<div class="col-auto"><strong>Step：</strong>'+data.step_min+' ~ '+data.step_max+'</div>';
+            html += '</div>';
+            if (data.metric_names && data.metric_names.length) {
+                html += '<div class="mt-1" style="font-size:0.85rem"><strong>指标名：</strong>';
+                data.metric_names.forEach(function(n){ html += '<span class="badge bg-light text-dark me-1">'+n+'</span>'; });
+                html += '</div>';
+            }
+            if (data.warnings && data.warnings.length) {
+                html += '<div class="mt-1 text-warning" style="font-size:0.8rem"><i class="bi bi-exclamation-triangle"></i> ';
+                html += data.warnings.join('; ');
+                html += '</div>';
+            }
+            // overwrite button
+            if (!overwrite) {
+                html += '<div class="mt-2"><button class="btn btn-outline-warning btn-sm btn-reparse" data-id="'+fileId+'" data-name="'+fileName+'"><i class="bi bi-arrow-repeat"></i> 覆盖旧指标重新解析</button></div>';
+            }
+            html += '</div>';
+            resultDiv.innerHTML = html;
+            // reparse handler
+            var reBtn = resultDiv.querySelector('.btn-reparse');
+            if (reBtn) {
+                reBtn.addEventListener('click', function() {
+                    resultDiv.innerHTML = '<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm"></div> <small>重新解析中…</small></div>';
+                    doParseLog(fileId, fileName, true, resultDiv);
+                });
+            }
+        } catch(e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>解析请求失败</small></div>';
+        }
+    }
+
+    // CSV import function
+    async function doImportCsv(fileId, fileName, overwrite, resultDiv) {
+        try {
+            var resp = await fetch('/api/experiments/'+EXP_ID+'/import-csv', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({file_id: parseInt(fileId), overwrite: overwrite}),
+            });
+            var data = await resp.json();
+            if (!data.ok && resp.status >= 400) {
+                resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small><i class="bi bi-x-circle"></i> '+data.msg+'</small></div>';
+                return;
+            }
+            var cnt = data.imported_records_count;
+            var html = '<div class="alert alert-'+(cnt > 0 ? 'success' : 'warning')+' py-2 px-3 mb-0">';
+            html += '<div class="fw-bold mb-1"><i class="bi bi-table"></i> CSV 导入结果</div>';
+            html += '<div class="row g-2" style="font-size:0.85rem">';
+            html += '<div class="col-auto"><strong>导入指标：</strong>'+cnt+' 条</div>';
+            if (data.skipped_rows) html += '<div class="col-auto"><strong>跳过行：</strong>'+data.skipped_rows+'</div>';
+            if (data.epoch_min !== null) html += '<div class="col-auto"><strong>Epoch：</strong>'+data.epoch_min+' ~ '+data.epoch_max+'</div>';
+            if (data.step_min !== null) html += '<div class="col-auto"><strong>Step：</strong>'+data.step_min+' ~ '+data.step_max+'</div>';
+            if (data.time_min !== null) html += '<div class="col-auto"><strong>Time：</strong>'+data.time_min+' ~ '+data.time_max+'</div>';
+            html += '</div>';
+            if (data.metric_names && data.metric_names.length) {
+                html += '<div class="mt-1" style="font-size:0.85rem"><strong>指标名：</strong>';
+                data.metric_names.forEach(function(n){ html += '<span class="badge bg-light text-dark me-1">'+n+'</span>'; });
+                html += '</div>';
+            }
+            if (data.skipped_columns && data.skipped_columns.length) {
+                html += '<div class="mt-1 text-muted" style="font-size:0.8rem"><strong>跳过列：</strong>'+data.skipped_columns.join(', ')+'</div>';
+            }
+            if (data.warnings && data.warnings.length) {
+                html += '<div class="mt-1 text-warning" style="font-size:0.8rem"><i class="bi bi-exclamation-triangle"></i> '+data.warnings.join('; ')+'</div>';
+            }
+            if (!overwrite) {
+                html += '<div class="mt-2"><button class="btn btn-outline-warning btn-sm btn-reimport" data-id="'+fileId+'" data-name="'+fileName+'"><i class="bi bi-arrow-repeat"></i> 覆盖旧指标重新导入</button></div>';
+            }
+            html += '</div>';
+            resultDiv.innerHTML = html;
+            var reBtn = resultDiv.querySelector('.btn-reimport');
+            if (reBtn) {
+                reBtn.addEventListener('click', function() {
+                    resultDiv.innerHTML = '<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm"></div> <small>重新导入中…</small></div>';
+                    doImportCsv(fileId, fileName, true, resultDiv);
+                });
+            }
+        } catch(e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>导入请求失败</small></div>';
+        }
+    }
+
+    loadFiles();
+});
+</script>
+{% endblock %}

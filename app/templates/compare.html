@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}实验对比 — SciFigLab{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-bar-chart-line"></i> 实验对比</h2>
+
+<div class="row g-4 mt-2">
+    <!-- Left: controls -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">1. 选择项目</h6></div>
+            <div class="card-body py-2">
+                <select id="projectSelect" class="form-select form-select-sm">
+                    <option value="">请选择项目</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">2. 选择实验（多选）</h6></div>
+            <div class="card-body py-2">
+                <select id="expSelect" class="form-select form-select-sm" multiple size="6" disabled>
+                    <option disabled>请先选择项目</option>
+                </select>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">3. 选择指标</h6></div>
+            <div class="card-body py-2">
+                <select id="metricSelect" class="form-select form-select-sm" disabled>
+                    <option value="">请先选择项目</option>
+                </select>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">4. 参数</h6></div>
+            <div class="card-body py-2">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">横轴</label>
+                        <select id="xAxisSelect" class="form-select form-select-sm">
+                            <option value="auto" selected>Auto</option>
+                            <option value="epoch">Epoch</option>
+                            <option value="step">Step</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">平滑窗口</label>
+                        <select id="smoothSelect" class="form-select form-select-sm">
+                            <option value="1" selected>1 (无)</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="showBestCheck" checked>
+                    <label class="form-check-label" for="showBestCheck" style="font-size:0.85rem">显示最佳点</label>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
+                        <select id="chartTypeSelect" class="form-select form-select-sm">
+                            <option value="line" selected>折线图</option>
+                            <option value="bar">柱状图</option>
+                            <option value="scatter">散点图</option>
+                            <option value="area">面积图</option>
+                            <option value="step">阶梯图</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-0" style="font-size:0.8rem">导出格式</label>
+                        <select id="exportFormatSelect" class="form-select form-select-sm">
+                            <option value="png" selected>PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="svg">SVG</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary w-100 mb-2" id="compareBtn" disabled><i class="bi bi-bar-chart-line"></i> 对比</button>
+        <button class="btn btn-outline-secondary w-100 mb-2" id="exportImgBtn" disabled><i class="bi bi-image"></i> 导出图片</button>
+    </div>
+
+    <!-- Right: chart + table -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div id="compareChart" style="height: 450px;"></div>
+                <div id="compareWarnings"></div>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><h6 class="mb-0">对比摘要</h6></div>
+            <div class="card-body p-0" id="compareSummary">
+                <p class="text-muted p-3 mb-0">请选择实验并点击"对比"。</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var chartInst = initEmptyChart("compareChart", "请选择实验进行对比");
+
+    var projectSel = document.getElementById('projectSelect');
+    var expSel = document.getElementById('expSelect');
+    var metricSel = document.getElementById('metricSelect');
+    var compareBtn = document.getElementById('compareBtn');
+
+    projectSel.addEventListener('change', async function() {
+        var pid = this.value;
+        expSel.innerHTML = '<option disabled>加载中…</option>';
+        metricSel.innerHTML = '<option value="">加载中…</option>';
+        expSel.disabled = true;
+        metricSel.disabled = true;
+        compareBtn.disabled = true;
+        if (!pid) return;
+
+        try {
+            var [expResp, metricResp] = await Promise.all([
+                fetch('/api/compare/projects/'+pid+'/experiments'),
+                fetch('/api/compare/projects/'+pid+'/metric-names'),
+            ]);
+            var exps = await expResp.json();
+            var metrics = await metricResp.json();
+
+            expSel.innerHTML = '';
+            exps.forEach(function(e) {
+                var opt = document.createElement('option');
+                opt.value = e.id;
+                var badges = '';
+                if (e.is_best) badges += ' ★';
+                if (e.is_paper_used) badges += ' 📄';
+                opt.textContent = e.name + ' (' + e.experiment_code + ')' + badges;
+                expSel.appendChild(opt);
+            });
+            expSel.disabled = false;
+
+            metricSel.innerHTML = '<option value="">请选择指标</option>';
+            (metrics.metric_names || []).forEach(function(n) {
+                var opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                metricSel.appendChild(opt);
+            });
+            metricSel.disabled = false;
+        } catch(e) {
+            expSel.innerHTML = '<option disabled>加载失败</option>';
+        }
+    });
+
+    function checkReady() {
+        var exps = Array.from(expSel.selectedOptions).map(function(o){ return o.value; });
+        var metric = metricSel.value;
+        compareBtn.disabled = !(exps.length > 0 && metric);
+    }
+    expSel.addEventListener('change', checkReady);
+    metricSel.addEventListener('change', checkReady);
+
+    compareBtn.addEventListener('click', async function() {
+        var expIds = Array.from(expSel.selectedOptions).map(function(o){ return parseInt(o.value); });
+        var metricName = metricSel.value;
+        var xAxis = document.getElementById('xAxisSelect').value;
+        var sw = parseInt(document.getElementById('smoothSelect').value);
+        var showBest = document.getElementById('showBestCheck').checked;
+
+        compareBtn.disabled = true;
+        compareBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 对比中…';
+
+        try {
+            var resp = await fetch('/api/compare/metrics', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    experiment_ids: expIds,
+                    metric_name: metricName,
+                    x_axis: xAxis,
+                    smooth_window: sw,
+                    show_best: showBest,
+                }),
+            });
+            var data = await resp.json();
+
+            // Render chart
+            var el = document.getElementById('compareChart');
+            var chart = echarts.getInstanceByDom(el);
+            if (!chart) chart = echarts.init(el);
+
+            var xLabel = data.x_axis || 'x';
+            var legendData = [];
+            var seriesArr = [];
+
+            var chartType = document.getElementById('chartTypeSelect').value;
+
+            data.series.forEach(function(s, idx) {
+                var color = s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+                legendData.push(s.display_name);
+                var item = {
+                    name: s.display_name,
+                    data: s.points.map(function(p){ return [p.x, p.y]; }),
+                    itemStyle: { color: color },
+                };
+                if (chartType === 'bar') {
+                    item.type = 'bar'; item.barMaxWidth = 30;
+                } else if (chartType === 'scatter') {
+                    item.type = 'scatter'; item.symbolSize = 6;
+                } else if (chartType === 'area') {
+                    item.type = 'line'; item.smooth = true; item.areaStyle = { opacity: 0.25 };
+                    item.symbol = 'circle'; item.symbolSize = 3;
+                    item.lineStyle = { color: color, width: 2 };
+                } else if (chartType === 'step') {
+                    item.type = 'line'; item.step = 'middle'; item.symbol = 'none';
+                    item.lineStyle = { color: color, width: 2 };
+                } else {
+                    item.type = 'line'; item.smooth = false;
+                    item.symbol = s.marker || 'circle'; item.symbolSize = 4;
+                    item.lineStyle = { color: color, width: 2, type: s.line_type || 'solid' };
+                }
+                seriesArr.push(item);
+                if (showBest && s.best_point) {
+                    seriesArr.push({
+                        name: s.display_name + ' best',
+                        type: 'scatter',
+                        data: [[s.best_point.x, s.best_point.y]],
+                        symbol: 'pin',
+                        symbolSize: 28,
+                        itemStyle: { color: color },
+                        label: { show: true, formatter: function(p){ return p.value[1].toFixed(4); }, position: 'top', fontSize: 10 },
+                        z: 10,
+                    });
+                }
+            });
+
+            chart.setOption({
+                title: { text: metricName + ' 对比', left: 'center', textStyle: { fontSize: 14 } },
+                tooltip: { trigger: 'axis' },
+                legend: { data: legendData, bottom: 0, type: 'scroll' },
+                grid: { left: 60, right: 30, top: 50, bottom: 50 },
+                xAxis: { type: 'value', name: xLabel, nameLocation: 'center', nameGap: 30 },
+                yAxis: { type: 'value', scale: true },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, bottom: 25, height: 15 },
+                ],
+                toolbox: { right: 10, feature: { saveAsImage: { title: '保存 PNG' }, restore: { title: '重置' } } },
+                color: DEFAULT_COLORS,
+                series: seriesArr,
+            }, true);
+
+            // Render summary table
+            var summaryEl = document.getElementById('compareSummary');
+            if (data.series.length) {
+                var direction = data.series[0].direction;
+                var dirLabel = direction === 'lower_better' ? '↓ 越小越好' : '↑ 越大越好';
+                var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+                html += '<thead class="table-light"><tr><th>实验</th><th>最佳值</th><th>最佳位置</th><th>最后值</th><th>数据量</th></tr></thead><tbody>';
+                data.series.forEach(function(s) {
+                    html += '<tr><td><strong>'+s.display_name+'</strong></td>';
+                    html += '<td>'+(s.best_point ? s.best_point.y.toFixed(6) : '-')+'</td>';
+                    html += '<td>'+(s.best_point ? s.best_point.x : '-')+'</td>';
+                    html += '<td>'+(s.last_point ? s.last_point.y.toFixed(6) : '-')+'</td>';
+                    html += '<td>'+s.point_count+'</td></tr>';
+                });
+                html += '</tbody></table></div>';
+                html += '<div class="px-3 py-1"><small class="text-muted">方向：'+dirLabel+'</small></div>';
+                summaryEl.innerHTML = html;
+            } else {
+                summaryEl.innerHTML = '<p class="text-muted p-3 mb-0">无数据。</p>';
+            }
+
+            // Warnings
+            var warnDiv = document.getElementById('compareWarnings');
+            if (data.warnings && data.warnings.length) {
+                warnDiv.innerHTML = '<div class="alert alert-warning py-1 px-2 mt-2 mb-0" style="font-size:0.8rem"><i class="bi bi-exclamation-triangle"></i> '+data.warnings.join('; ')+'</div>';
+            } else {
+                warnDiv.innerHTML = '';
+            }
+        } catch(e) {
+            document.getElementById('compareWarnings').innerHTML = '<div class="alert alert-danger py-1 px-2 mt-2 mb-0"><small>对比请求失败</small></div>';
+        } finally {
+            compareBtn.disabled = false;
+            compareBtn.innerHTML = '<i class="bi bi-bar-chart-line"></i> 对比';
+            document.getElementById('exportImgBtn').disabled = false;
+            checkReady();
+        }
+    });
+
+    // Export image
+    document.getElementById('exportImgBtn').addEventListener('click', function() {
+        var el = document.getElementById('compareChart');
+        var inst = echarts.getInstanceByDom(el);
+        if (!inst) return;
+        var fmt = document.getElementById('exportFormatSelect').value;
+        if (fmt === 'pdf') {
+            var url = inst.getDataURL({ type: 'png', pixelRatio: 3, backgroundColor: '#fff' });
+            var win = window.open('');
+            win.document.write('<html><head><title>Chart PDF</title></head><body>');
+            win.document.write('<img src="'+url+'" style="max-width:100%">');
+            win.document.write('<p style="text-align:center;margin-top:10px"><small>\u4f7f\u7528\u6d4f\u89c8\u5668 Ctrl+P \u6253\u5370\u4e3a PDF</small></p>');
+            win.document.write('</body></html>');
+        } else {
+            var type = fmt === 'jpg' ? 'jpeg' : (fmt === 'svg' ? 'svg' : 'png');
+            var url = inst.getDataURL({ type: type, pixelRatio: 2, backgroundColor: '#fff' });
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'compare_chart.' + fmt;
+            a.click();
+        }
+    });
+});
+</script>
+{% endblock %}

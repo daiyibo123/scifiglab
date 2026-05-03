@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">项目</a></li>
+        <li class="breadcrumb-item"><a href="/projects/{{ project.id }}">{{ project.name }}</a></li>
+        {% if experiment %}
+        <li class="breadcrumb-item"><a href="/experiments/{{ experiment.id }}">{{ experiment.name }}</a></li>
+        <li class="breadcrumb-item active">编辑</li>
+        {% else %}
+        <li class="breadcrumb-item active">新建实验</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-4">
+                    {% if experiment %}<i class="bi bi-pencil"></i> 编辑实验{% else %}<i class="bi bi-plus-circle"></i> 新建实验{% endif %}
+                </h3>
+                <div id="alertBox" class="d-none"></div>
+                <form id="expForm">
+                    <div class="row g-3">
+                        <!-- Name -->
+                        <div class="col-md-8">
+                            <label for="name" class="form-label">实验名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" value="{{ experiment.name if experiment else '' }}" required>
+                        </div>
+                        <!-- Status -->
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">状态</label>
+                            <select class="form-select" id="status">
+                                {% for key, label in status_labels.items() %}
+                                <option value="{{ key }}" {% if experiment and experiment.status == key %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Tags -->
+                        <div class="col-12">
+                            <label for="tags" class="form-label">标签 <small class="text-muted">（逗号分隔）</small></label>
+                            <input type="text" class="form-control" id="tags" value="{{ experiment.tags if experiment else '' }}" placeholder="tag1, tag2, tag3">
+                        </div>
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label for="description" class="form-label">实验描述</label>
+                            <textarea class="form-control" id="description" rows="3">{{ experiment.description if experiment else '' }}</textarea>
+                        </div>
+                        <!-- Times -->
+                        <div class="col-md-6">
+                            <label for="started_at" class="form-label">开始时间</label>
+                            <input type="datetime-local" class="form-control" id="started_at"
+                                   value="{{ experiment.started_at.strftime('%Y-%m-%dT%H:%M') if experiment and experiment.started_at else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ended_at" class="form-label">结束时间</label>
+                            <input type="datetime-local" class="form-control" id="ended_at"
+                                   value="{{ experiment.ended_at.strftime('%Y-%m-%dT%H:%M') if experiment and experiment.ended_at else '' }}">
+                        </div>
+                        <!-- Flags -->
+                        <div class="col-12">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="is_best" {% if experiment and experiment.is_best %}checked{% endif %}>
+                                <label class="form-check-label" for="is_best"><i class="bi bi-star-fill text-warning"></i> 最优实验</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="is_paper_used" {% if experiment and experiment.is_paper_used %}checked{% endif %}>
+                                <label class="form-check-label" for="is_paper_used"><i class="bi bi-journal-check text-info"></i> 论文采用</label>
+                            </div>
+                            {% if experiment %}
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="is_archived" {% if experiment.is_archived %}checked{% endif %}>
+                                <label class="form-check-label" for="is_archived"><i class="bi bi-archive"></i> 归档</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <!-- Note -->
+                        <div class="col-12">
+                            <label for="note" class="form-label">备注</label>
+                            <textarea class="form-control" id="note" rows="2">{{ experiment.note if experiment else '' }}</textarea>
+                        </div>
+                        <!-- Metadata JSON -->
+                        <div class="col-12">
+                            <label for="metadata_json" class="form-label">
+                                自定义参数 (JSON)
+                                <small class="text-muted">例：{"model_name":"Restormer","learning_rate":0.0002}</small>
+                            </label>
+                            <textarea class="form-control font-monospace" id="metadata_json" rows="6" spellcheck="false">{{ experiment.metadata_json if experiment and experiment.metadata_json else '{}' }}</textarea>
+                            <div id="jsonError" class="invalid-feedback">JSON 格式不正确</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            {% if experiment %}保存修改{% else %}创建实验{% endif %}
+                        </button>
+                        <a href="{% if experiment %}/experiments/{{ experiment.id }}{% else %}/projects/{{ project.id }}{% endif %}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var alertBox = document.getElementById('alertBox');
+    var form = document.getElementById('expForm');
+    var submitBtn = document.getElementById('submitBtn');
+    var isEdit = {{ 'true' if experiment else 'false' }};
+    var projectId = {{ project.id }};
+    var expId = {{ experiment.id if experiment else 'null' }};
+
+    function showAlert(msg, type) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    // Validate JSON on blur
+    var metaField = document.getElementById('metadata_json');
+    metaField.addEventListener('blur', function() {
+        try {
+            JSON.parse(this.value || '{}');
+            this.classList.remove('is-invalid');
+        } catch(e) {
+            this.classList.add('is-invalid');
+        }
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+
+        var metaRaw = metaField.value.trim() || '{}';
+        try { JSON.parse(metaRaw); } catch(err) {
+            showAlert('自定义参数 JSON 格式不正确', 'danger');
+            metaField.classList.add('is-invalid');
+            return;
+        }
+
+        submitBtn.disabled = true;
+
+        var payload = {
+            name: document.getElementById('name').value.trim(),
+            description: document.getElementById('description').value.trim(),
+            status: document.getElementById('status').value,
+            tags: document.getElementById('tags').value.trim(),
+            started_at: document.getElementById('started_at').value || null,
+            ended_at: document.getElementById('ended_at').value || null,
+            is_best: document.getElementById('is_best').checked,
+            is_paper_used: document.getElementById('is_paper_used').checked,
+            note: document.getElementById('note').value.trim(),
+            metadata_json: metaRaw,
+        };
+
+        if (isEdit) {
+            var archiveEl = document.getElementById('is_archived');
+            payload.is_archived = archiveEl ? archiveEl.checked : false;
+        }
+
+        try {
+            var url, method;
+            if (isEdit) {
+                url = '/api/experiments/' + expId;
+                method = 'PUT';
+            } else {
+                url = '/api/projects/' + projectId + '/experiments';
+                method = 'POST';
+            }
+
+            var resp = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                if (isEdit) {
+                    window.location.href = '/experiments/' + expId;
+                } else {
+                    window.location.href = '/experiments/' + data.experiment_id;
+                }
+            } else {
+                showAlert(data.msg, 'danger');
+                submitBtn.disabled = false;
+            }
+        } catch (err) {
+            showAlert('网络错误，请稍后重试', 'danger');
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — SciFigLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">项目</a></li>
+        {% if project %}
+        <li class="breadcrumb-item"><a href="/projects/{{ project.id }}">{{ project.name }}</a></li>
+        <li class="breadcrumb-item active">编辑</li>
+        {% else %}
+        <li class="breadcrumb-item active">新建项目</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-4">
+                    {% if project %}
+                    <i class="bi bi-pencil"></i> 编辑项目
+                    {% else %}
+                    <i class="bi bi-folder-plus"></i> 新建项目
+                    {% endif %}
+                </h3>
+                <div id="alertBox" class="d-none"></div>
+                <form id="projectForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">项目名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ project.name if project else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="research_area" class="form-label">研究领域</label>
+                        <select class="form-select" id="research_area" name="research_area">
+                            {% for key, label in research_areas.items() %}
+                            <option value="{{ key }}" {% if project and project.research_area == key %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">项目描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="4">{{ project.description if project else '' }}</textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            {% if project %}保存修改{% else %}创建项目{% endif %}
+                        </button>
+                        <a href="{% if project %}/projects/{{ project.id }}{% else %}/projects{% endif %}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var alertBox = document.getElementById('alertBox');
+    var form = document.getElementById('projectForm');
+    var submitBtn = document.getElementById('submitBtn');
+    var isEdit = {{ 'true' if project else 'false' }};
+    var projectId = {{ project.id if project else 'null' }};
+
+    function showAlert(msg, type) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alertBox.classList.add('d-none');
+        submitBtn.disabled = true;
+
+        var payload = {
+            name: document.getElementById('name').value.trim(),
+            description: document.getElementById('description').value.trim(),
+            research_area: document.getElementById('research_area').value,
+        };
+
+        try {
+            var url, method;
+            if (isEdit) {
+                url = '/api/projects/' + projectId;
+                method = 'PUT';
+            } else {
+                url = '/api/projects';
+                method = 'POST';
+            }
+
+            var resp = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                if (isEdit) {
+                    window.location.href = '/projects/' + projectId;
+                } else {
+                    window.location.href = '/projects/' + data.project_id;
+                }
+            } else {
+                showAlert(data.msg, 'danger');
+                submitBtn.disabled = false;
+            }
+        } catch (err) {
+            showAlert('网络错误，请稍后重试', 'danger');
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

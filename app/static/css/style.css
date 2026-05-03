@@ -1,0 +1,97 @@
+/* ResearchExpHub — custom styles */
+
+body {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    font-size: 0.92rem;
+}
+
+.navbar-brand i {
+    margin-right: 4px;
+}
+
+.card {
+    border: none;
+    border-radius: 0.5rem;
+    transition: box-shadow 0.15s;
+}
+
+.card:hover {
+    box-shadow: 0 .25rem .75rem rgba(0,0,0,.08) !important;
+}
+
+.card-header {
+    border-bottom: 1px solid #eee;
+}
+
+.display-6 {
+    font-weight: 700;
+}
+
+/* Table tweaks */
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13,110,253,0.04);
+}
+
+/* Badge adjustments */
+.badge {
+    font-weight: 500;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+/* Code blocks */
+code {
+    font-size: 0.82rem;
+}
+
+/* Form controls consistency */
+.form-select-sm, .form-control-sm {
+    font-size: 0.82rem;
+}
+
+/* Alert small */
+.alert-sm {
+    font-size: 0.82rem;
+    padding: 0.35rem 0.6rem;
+}
+
+/* Chart containers */
+[id$="Chart"] {
+    min-height: 250px;
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Footer */
+footer small {
+    font-size: 0.78rem;
+}
+
+/* Responsive helpers */
+@media (max-width: 768px) {
+    .display-6 {
+        font-size: 1.5rem;
+    }
+    main.container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}

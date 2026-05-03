@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 — SciFigLab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2"></i> 仪表盘</h2>
+    <a href="/projects/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新建项目</a>
+</div>
+
+<!-- Stats row 1 -->
+<div class="row g-3">
+    <div class="col-6 col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body py-3">
+                <h6 class="card-title mb-1"><i class="bi bi-folder"></i> 项目</h6>
+                <p class="display-6 mb-0">{{ project_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body py-3">
+                <h6 class="card-title mb-1"><i class="bi bi-journal-text"></i> 实验</h6>
+                <p class="display-6 mb-0">{{ experiment_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body py-3">
+                <h6 class="card-title mb-1"><i class="bi bi-collection"></i> 实验组</h6>
+                <p class="display-6 mb-0">{{ group_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-white bg-secondary shadow-sm">
+            <div class="card-body py-3">
+                <h6 class="card-title mb-1"><i class="bi bi-file-earmark"></i> 文件</h6>
+                <p class="display-6 mb-0">{{ file_count }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Stats row 2 -->
+<div class="row g-3 mt-1">
+    <div class="col-4">
+        <div class="card shadow-sm">
+            <div class="card-body py-2 text-center">
+                <small class="text-muted">指标记录</small>
+                <p class="h5 mb-0 text-primary">{{ metric_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card shadow-sm">
+            <div class="card-body py-2 text-center">
+                <small class="text-muted">运行中</small>
+                <p class="h5 mb-0 text-warning">{{ running_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card shadow-sm">
+            <div class="card-body py-2 text-center">
+                <small class="text-muted">最佳实验</small>
+                <p class="h5 mb-0 text-success">{{ best_count }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Projects -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">最近创建的项目</h5>
+        <a href="/projects" class="text-decoration-none">全部项目 &rarr;</a>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_projects %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>项目名称</th>
+                        <th>研究领域</th>
+                        <th>实验数</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recent_projects %}
+                    <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ p.area_label }}</span></td>
+                        <td>{{ p.exp_count }}</td>
+                        <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">暂无项目，点击右上角「新建项目」开始。</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recently Updated -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">最近更新的项目</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if recently_updated %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>项目名称</th>
+                        <th>研究领域</th>
+                        <th>更新时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recently_updated %}
+                    <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ p.area_label }}</span></td>
+                        <td>{{ p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">暂无数据。</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Experiments -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">最近实验</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_experiments %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>实验名称</th>
+                        <th>所属项目</th>
+                        <th>状态</th>
+                        <th>标记</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in recent_experiments %}
+                    <tr style="cursor:pointer" onclick="location.href='/experiments/{{ e.id }}'">
+                        <td><strong>{{ e.name }}</strong> <code class="text-muted">{{ e.experiment_code }}</code></td>
+                        <td>{{ e.project_name }}</td>
+                        <td>
+                            {% if e.status == 'running' %}
+                            <span class="badge bg-warning text-dark">运行中</span>
+                            {% elif e.status == 'completed' %}
+                            <span class="badge bg-success">完成</span>
+                            {% elif e.status == 'failed' %}
+                            <span class="badge bg-danger">失败</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ e.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if e.is_best %}<span class="badge bg-warning text-dark" title="最佳">★</span>{% endif %}
+                            {% if e.is_paper_used %}<span class="badge bg-info text-dark" title="论文使用">📄</span>{% endif %}
+                        </td>
+                        <td>{{ e.created_at.strftime('%Y-%m-%d %H:%M') if e.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">暂无实验。</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}项目列表 — SciFigLab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-folder"></i> 项目列表</h2>
+    <a href="/projects/new" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> 新建项目
+    </a>
+</div>
+
+{% if projects %}
+<div class="row g-4">
+    {% for p in projects %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">
+                        <a href="/projects/{{ p.id }}" class="text-decoration-none">{{ p.name }}</a>
+                    </h5>
+                    <span class="badge bg-secondary">{{ p.area_label }}</span>
+                </div>
+                <p class="card-text text-muted flex-grow-1">{{ p.description[:100] if p.description else '暂无描述' }}{{ '...' if p.description and p.description|length > 100 else '' }}</p>
+                <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                    <small class="text-muted">
+                        <i class="bi bi-journal-text"></i> {{ p.exp_count }} 个实验
+                        &nbsp;&middot;&nbsp;
+                        {{ p.updated_at.strftime('%Y-%m-%d') if p.updated_at else '-' }}
+                    </small>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/projects/{{ p.id }}/edit" class="btn btn-outline-secondary" title="编辑"><i class="bi bi-pencil"></i></a>
+                        <button class="btn btn-outline-danger btn-delete" data-id="{{ p.id }}" data-name="{{ p.name }}" title="删除"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-folder-plus display-4 text-muted"></i>
+        <p class="text-muted mt-3 mb-0">暂无项目，点击「新建项目」开始。</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Delete confirm modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除项目「<strong id="deleteProjectName"></strong>」吗？</p>
+                <p class="text-danger mb-0"><small>该操作不可撤销，项目下的所有实验、指标和文件将一并删除。</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var deleteId = null;
+    var modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+    document.querySelectorAll('.btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            deleteId = this.dataset.id;
+            document.getElementById('deleteProjectName').textContent = this.dataset.name;
+            modal.show();
+        });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+        if (!deleteId) return;
+        this.disabled = true;
+        try {
+            var resp = await fetch('/api/projects/' + deleteId, {method: 'DELETE'});
+            var data = await resp.json();
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert(data.msg);
+                this.disabled = false;
+            }
+        } catch (err) {
+            alert('网络错误');
+            this.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}
