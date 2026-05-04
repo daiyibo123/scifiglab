@@ -66,6 +66,28 @@ def diagram_list_page(
     })
 
 
+@router.get("/new")
+def diagram_new_page(
+    request: Request,
+    current_user=Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=302)
+    projects = (
+        db.query(Project)
+        .filter(Project.user_id == current_user.id)
+        .order_by(Project.name)
+        .all()
+    )
+    return templates.TemplateResponse("diagram_editor.html", {
+        "request": request,
+        "current_user": current_user,
+        "diagram": None,
+        "projects": projects,
+    })
+
+
 @router.get("/{diagram_id}/edit")
 def diagram_edit_page(
     diagram_id: int,
@@ -91,28 +113,6 @@ def diagram_edit_page(
         "request": request,
         "current_user": current_user,
         "diagram": diagram,
-        "projects": projects,
-    })
-
-
-@router.get("/new")
-def diagram_new_page(
-    request: Request,
-    current_user=Depends(get_current_user_optional),
-    db: Session = Depends(get_db),
-):
-    if current_user is None:
-        return RedirectResponse(url="/login", status_code=302)
-    projects = (
-        db.query(Project)
-        .filter(Project.user_id == current_user.id)
-        .order_by(Project.name)
-        .all()
-    )
-    return templates.TemplateResponse("diagram_editor.html", {
-        "request": request,
-        "current_user": current_user,
-        "diagram": None,
         "projects": projects,
     })
 
