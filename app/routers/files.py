@@ -15,16 +15,35 @@ from app.database.models import Experiment, Project, UploadedFile, User
 # Extension → (file_type, subdirectory)
 # ---------------------------------------------------------------------------
 EXT_MAP = {
+    # 日志
     ".log": ("log", "logs"),
     ".txt": ("log", "logs"),
+    # 配置
     ".yaml": ("config", "configs"),
     ".yml": ("config", "configs"),
     ".json": ("config", "configs"),
+    # 指标/数据
     ".csv": ("metrics", "metrics"),
+    ".tsv": ("metrics", "metrics"),
+    # 表格
     ".xlsx": ("table", "tables"),
+    # 图像
     ".png": ("image", "images"),
     ".jpg": ("image", "images"),
     ".jpeg": ("image", "images"),
+    ".svg": ("image", "images"),
+    ".tif": ("image", "images"),
+    ".tiff": ("image", "images"),
+    # 科学数据
+    ".npy": ("data", "data"),
+    ".npz": ("data", "data"),
+    ".hdf5": ("data", "data"),
+    ".h5": ("data", "data"),
+    ".mat": ("data", "data"),
+    ".nc": ("data", "data"),
+    ".fits": ("data", "data"),
+    ".parquet": ("data", "data"),
+    # 文档
     ".pdf": ("other", "other"),
     ".md": ("other", "other"),
 }
@@ -35,8 +54,9 @@ FILE_TYPE_LABELS = {
     "log": "日志",
     "config": "配置",
     "metrics": "指标",
-    "image": "图片",
+    "image": "图像",
     "table": "表格",
+    "data": "科学数据",
     "other": "其他",
 }
 
@@ -71,7 +91,7 @@ def _validate_file_content(content: bytes, ext: str, file_type: str):
     Returns an error message string if invalid, None if OK.
     """
     # Only validate text-based parseable types
-    if file_type in ("image", "table", "other"):
+    if file_type in ("image", "table", "data", "other"):
         return None
 
     # Must be decodable as text
@@ -86,17 +106,18 @@ def _validate_file_content(content: bytes, ext: str, file_type: str):
     if not text.strip():
         return "文件内容为空"
 
-    # CSV: must have at least a header row
-    if ext == ".csv":
+    # CSV / TSV: must have at least a header row
+    if ext in (".csv", ".tsv"):
         import csv
         import io
         try:
-            reader = csv.reader(io.StringIO(text))
+            delimiter = "\t" if ext == ".tsv" else ","
+            reader = csv.reader(io.StringIO(text), delimiter=delimiter)
             header = next(reader, None)
             if not header or len(header) < 2:
-                return "CSV 文件至少需要两列（如 step, metric）"
+                return "CSV/TSV 文件至少需要两列（如 step, metric）"
         except csv.Error as e:
-            return f"CSV 格式错误: {e}"
+            return f"CSV/TSV 格式错误: {e}"
 
     # Config: validate yaml/json
     if ext in (".yaml", ".yml"):
@@ -212,10 +233,33 @@ async def api_upload_file(
     db.commit()
     db.refresh(record)
 
+    # Auto-parse and import metrics
+    parse_summary = None
+    try:
+        from app.services.auto_parse import auto_import_after_upload
+        parse_summary = auto_import_after_upload(
+            db=db,
+            content=content,
+            ext=ext,
+            user_id=current_user.id,
+            project_id=exp.project_id,
+            experiment_id=experiment_id,
+            source_file_id=record.id,
+        )
+    except Exception:
+        pass  # auto-parse failure should not block upload
+
+    msg = "文件上传成功"
+    if parse_summary:
+        n = parse_summary.get("imported", 0)
+        names = parse_summary.get("metric_names", [])
+        msg += f"，已自动导入 {n} 条指标记录 ({', '.join(names[:5])})"
+
     return {
         "ok": True,
-        "msg": "文件上传成功",
+        "msg": msg,
         "file": _file_to_dict(record),
+        "parse_summary": parse_summary,
     }
 
 
@@ -297,3 +341,32 @@ def api_download_file(
         media_type=mime,
         headers={"Content-Disposition": f'attachment; filename="{record.original_name}"'},
     )
+
+
+@api_router.get("/api/files/{file_id}/parse-preview")
+def api_parse_preview(
+    file_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return auto-detected parse preview for a file (columns, metrics, sample data)."""
+    record = (
+        db.query(UploadedFile)
+        .filter(UploadedFile.id == file_id, UploadedFile.user_id == current_user.id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    abs_path = DATA_DIR / record.file_path
+    if not abs_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在于磁盘")
+
+    raw = abs_path.read_bytes()
+    from app.services.encryption import is_encrypted, decrypt_bytes
+    if is_encrypted(raw):
+        raw = decrypt_bytes(raw, settings.SECRET_KEY) or raw
+
+    from app.services.auto_parse import detect_and_preview
+    preview = detect_and_preview(raw, record.file_ext, file_id=record.id)
+    return preview.to_dict()

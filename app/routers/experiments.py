@@ -35,17 +35,7 @@ STATUS_COLORS = {
     "paper_used": "info",
 }
 
-RESEARCH_AREAS = {
-    "deep_learning": "深度学习",
-    "computer_science": "计算机科学",
-    "biology": "生物学",
-    "chemistry": "化学",
-    "materials": "材料科学",
-    "physics": "物理学",
-    "engineering": "工程学",
-    "medicine": "医学",
-    "other": "其他",
-}
+from app.core.disciplines import RESEARCH_AREAS
 
 
 def _generate_experiment_code(db: Session, project_id: int) -> str:
@@ -207,6 +197,8 @@ def upload_page(
     project = db.query(Project).filter(Project.id == exp.project_id).first()
     project.area_label = RESEARCH_AREAS.get(project.research_area, project.research_area)
     from app.core.config import settings as _settings
+    from app.core.disciplines import get_formats_for_area
+    suggested_formats = get_formats_for_area(project.research_area or "other")
     return templates.TemplateResponse("upload.html", {
         "request": request,
         "title": "上传文件",
@@ -214,6 +206,7 @@ def upload_page(
         "project": project,
         "experiment": exp,
         "max_size_mb": _settings.UPLOAD_MAX_SIZE_MB,
+        "suggested_formats": suggested_formats,
     })
 
 

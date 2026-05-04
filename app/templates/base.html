@@ -9,43 +9,101 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="{{ url_for('static', path='css/style.css') }}" rel="stylesheet">
     <style>
-    /* ── Sidebar layout ── */
-    .sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:#1e293b;color:#cbd5e1;display:flex;flex-direction:column;transition:width .25s;z-index:1040;overflow:hidden}
-    .sidebar.collapsed{width:60px}
-    .sidebar .brand{display:flex;align-items:center;gap:.6rem;padding:.9rem 1rem;font-weight:700;color:#fff;text-decoration:none;white-space:nowrap;font-size:1rem;border-bottom:1px solid rgba(255,255,255,.06)}
-    .sidebar .brand img{height:26px;flex-shrink:0}
+    :root{--sb-w:240px;--sb-w-c:68px;--sb-bg:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);--accent:#6366f1;--accent-hover:#818cf8;--txt-dim:#94a3b8;--txt-light:#e2e8f0}
+
+    /* ── Sidebar ── */
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sb-w);background:var(--sb-bg);color:var(--txt-dim);display:flex;flex-direction:column;z-index:1040;transition:width .3s cubic-bezier(.4,0,.2,1);overflow:hidden;border-right:1px solid rgba(255,255,255,.04)}
+    .sidebar.collapsed{width:var(--sb-w-c)}
+
+    /* Brand */
+    .sidebar .brand{display:flex;align-items:center;gap:.65rem;padding:1rem 1.1rem;text-decoration:none;white-space:nowrap;position:relative;min-height:60px}
+    .sidebar-top-toggle{margin-left:auto;width:26px;height:26px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--txt-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;font-size:.7rem;padding:0}
+    .sidebar-top-toggle:hover{background:rgba(99,102,241,.15);color:#fff;border-color:rgba(99,102,241,.3)}
+    .sidebar-top-toggle i{transition:transform .3s}
+    .sidebar.collapsed .sidebar-top-toggle i{transform:rotate(180deg)}
+    .sidebar.collapsed .sidebar-top-toggle{margin:0 auto}
+    .sidebar .brand img{height:30px;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(99,102,241,.5));transition:transform .2s,filter .2s;border-radius:6px}
+    .sidebar .brand img:hover{transform:scale(1.12);filter:drop-shadow(0 0 10px rgba(99,102,241,.8))}
+    .sidebar .brand-text{font-size:1.05rem;font-weight:800;background:linear-gradient(135deg,#fff,var(--accent-hover));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .sidebar.collapsed .brand-text{display:none}
-    .sidebar-nav{flex:1;overflow-y:auto;padding:.5rem 0}
-    .sidebar-nav a{display:flex;align-items:center;gap:.7rem;padding:.55rem 1rem;color:#94a3b8;text-decoration:none;font-size:.88rem;white-space:nowrap;border-left:3px solid transparent;transition:background .15s,color .15s}
-    .sidebar-nav a:hover,.sidebar-nav a.active{background:rgba(124,58,237,.12);color:#e2e8f0;border-left-color:#7c3aed}
-    .sidebar-nav a i{font-size:1.1rem;flex-shrink:0;width:20px;text-align:center}
+
+    /* Brand popover — GitHub + Update on hover */
+    .brand-popover{display:none;position:fixed;background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:.6rem;z-index:1060;box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap;transition:opacity .15s}
+    .brand-popover.show{display:flex;flex-direction:column;gap:.4rem}
+    .brand-popover::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%) rotate(45deg);width:10px;height:10px;background:#1e293b;border-left:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)}
+    .brand-popover a,.brand-popover button{display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;border-radius:7px;color:var(--txt-dim);background:transparent;border:none;font-size:.82rem;cursor:pointer;transition:all .15s;text-decoration:none}
+    .brand-popover a:hover,.brand-popover button:hover{background:rgba(99,102,241,.15);color:#fff}
+    .brand-popover a i,.brand-popover button i{font-size:.95rem;width:18px;text-align:center}
+
+    /* Nav */
+    .sidebar-nav{flex:1;overflow-y:auto;padding:.75rem 0}
+    .sidebar-nav .nav-section{padding:.5rem 1.1rem .25rem;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:#475569;font-weight:600}
+    .sidebar.collapsed .nav-section{display:none}
+    .sidebar-nav a{display:flex;align-items:center;gap:.75rem;padding:.6rem 1.1rem;color:var(--txt-dim);text-decoration:none;font-size:.87rem;white-space:nowrap;border-radius:0 8px 8px 0;margin-right:.5rem;transition:all .15s}
+    .sidebar-nav a:hover{background:rgba(99,102,241,.08);color:var(--txt-light)}
+    .sidebar-nav a.active{background:rgba(99,102,241,.15);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--accent)}
+    .sidebar-nav a i{font-size:1.15rem;flex-shrink:0;width:22px;text-align:center}
     .sidebar.collapsed .sidebar-nav a span{display:none}
-    .sidebar-footer{padding:.6rem 1rem;border-top:1px solid rgba(255,255,255,.06);font-size:.82rem}
-    .sidebar-footer a{color:#94a3b8;text-decoration:none}
-    .sidebar-footer a:hover{color:#fff}
-    .sidebar.collapsed .sidebar-footer span,.sidebar.collapsed .sidebar-footer .user-label{display:none}
-    .sidebar.collapsed .update-label{display:none}
+    .sidebar.collapsed .sidebar-nav a{margin-right:0;border-radius:0;justify-content:center;padding:.65rem 0}
 
-    /* Toggle button */
-    .sidebar-toggle{position:absolute;top:.65rem;right:-14px;width:28px;height:28px;border-radius:50%;background:#334155;border:2px solid #1e293b;color:#cbd5e1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.7rem;z-index:1041;transition:transform .25s}
-    .sidebar.collapsed .sidebar-toggle{transform:rotate(180deg)}
+    /* Footer */
+    .sidebar-footer{padding:.5rem .7rem;border-top:1px solid rgba(255,255,255,.06)}
+    .user-trigger{display:flex;align-items:center;gap:.55rem;padding:.5rem .6rem;border-radius:8px;cursor:pointer;transition:background .15s;position:relative}
+    .user-trigger:hover{background:rgba(255,255,255,.08)}
+    .user-trigger .u-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.78rem;color:#fff;font-weight:700;flex-shrink:0}
+    .user-trigger .u-name{font-size:.84rem;color:var(--txt-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    .user-trigger .u-chevron{font-size:.7rem;color:var(--txt-dim);transition:transform .2s}
+    .user-trigger.open .u-chevron{transform:rotate(180deg)}
+    .sidebar.collapsed .u-name,.sidebar.collapsed .u-chevron{display:none}
+    .sidebar.collapsed .user-trigger{justify-content:center;padding:.5rem 0}
+    /* User popover — pops upward */
+    .user-popover{display:none;position:fixed;background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:.5rem;z-index:1060;box-shadow:0 -4px 20px rgba(0,0,0,.4);min-width:180px}
+    .user-popover.show{display:block}
+    .user-popover .up-email{padding:.35rem .65rem;font-size:.74rem;color:#64748b;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .user-popover .up-item{display:flex;align-items:center;gap:.5rem;padding:.45rem .65rem;border-radius:7px;color:var(--txt-dim);background:transparent;border:none;font-size:.82rem;cursor:pointer;transition:all .15s;width:100%;text-decoration:none}
+    .user-popover .up-item:hover{background:rgba(99,102,241,.15);color:#fff}
+    .user-popover .up-item.danger:hover{background:rgba(239,68,68,.15);color:#f87171}
+    .user-popover .up-item i{font-size:.9rem;width:18px;text-align:center}
 
-    /* Main content offset */
-    .main-wrapper{margin-left:220px;min-height:100vh;display:flex;flex-direction:column;transition:margin-left .25s}
-    .main-wrapper.shifted{margin-left:60px}
-    .main-wrapper main{flex:1;padding:1.5rem}
-    .main-wrapper footer{text-align:center;color:#64748b;padding:1rem;font-size:.78rem;border-top:1px solid #e2e8f0}
+    /* Toggle — inline at bottom */
+    .sidebar-collapse-btn{display:flex;align-items:center;gap:.6rem;width:100%;padding:.55rem 1.1rem;color:var(--txt-dim);background:transparent;border:none;border-top:1px solid rgba(255,255,255,.06);font-size:.82rem;cursor:pointer;transition:all .15s}
+    .sidebar-collapse-btn:hover{background:rgba(255,255,255,.06);color:var(--txt-light)}
+    .sidebar-collapse-btn i{font-size:1rem;width:22px;text-align:center;flex-shrink:0;transition:transform .3s}
+    .sidebar.collapsed .sidebar-collapse-btn i{transform:rotate(180deg)}
+    .sidebar.collapsed .sidebar-collapse-btn span{display:none}
+    .sidebar.collapsed .sidebar-collapse-btn{justify-content:center;padding:.55rem 0}
 
-    /* Mobile overlay */
+    /* ── Main wrapper ── */
+    .main-wrapper{margin-left:var(--sb-w);min-height:100vh;display:flex;flex-direction:column;transition:margin-left .3s cubic-bezier(.4,0,.2,1);background:#f1f5f9}
+    .main-wrapper.shifted{margin-left:var(--sb-w-c)}
+    .main-wrapper main{flex:1;padding:1.5rem 2rem}
+    .main-wrapper footer{text-align:center;color:#94a3b8;padding:.8rem;font-size:.75rem;border-top:1px solid #e2e8f0}
+
+    /* ── Page tabs ── */
+    .page-tabs{display:flex;align-items:center;background:#fff;border-bottom:1px solid #e2e8f0;padding:0 .75rem;overflow-x:auto;min-height:38px;gap:0;flex-shrink:0}
+    .page-tabs::-webkit-scrollbar{height:0}
+    .page-tab{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .85rem;font-size:.8rem;color:#64748b;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s;position:relative;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none;flex-shrink:0}
+    .page-tab:hover{color:#334155;background:rgba(99,102,241,.04)}
+    .page-tab.active{color:#6366f1;font-weight:600;border-bottom-color:#6366f1;background:rgba(99,102,241,.06)}
+    .page-tab .tab-icon{font-size:.82rem}
+    .page-tab .tab-close{font-size:.65rem;padding:2px;border-radius:50%;opacity:.4;transition:all .12s;margin-left:.15rem;line-height:1;cursor:pointer}
+    .page-tab .tab-close:hover{opacity:1;background:rgba(239,68,68,.12);color:#ef4444}
+    .page-tab .tab-refresh{font-size:.62rem;opacity:.35;transition:opacity .12s;cursor:pointer}
+    .page-tab .tab-refresh:hover{opacity:1}
+    .page-tab-home .tab-close{display:none}
+
+    /* Mobile */
     @media(max-width:768px){
-        .sidebar{width:220px;left:-220px}
-        .sidebar.mobile-open{left:0}
-        .sidebar.collapsed{left:-60px}
+        .sidebar{width:var(--sb-w);left:calc(var(--sb-w) * -1)}
+        .sidebar.mobile-open{left:0;box-shadow:4px 0 20px rgba(0,0,0,.4)}
+        .sidebar.collapsed{left:calc(var(--sb-w-c) * -1)}
         .main-wrapper,.main-wrapper.shifted{margin-left:0}
         .mobile-header{display:flex!important}
     }
-    .mobile-header{display:none;align-items:center;gap:.5rem;padding:.6rem 1rem;background:#1e293b;color:#fff;position:sticky;top:0;z-index:1030}
+    .mobile-header{display:none;align-items:center;gap:.5rem;padding:.6rem 1rem;background:#0f172a;color:#fff;position:sticky;top:0;z-index:1030}
     .mobile-header img{height:24px}
+    .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1039}
+    .sidebar.mobile-open~.mobile-overlay{display:block}
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -53,48 +111,64 @@
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
-    <div class="sidebar-toggle" id="sidebarToggle"><i class="bi bi-chevron-left"></i></div>
-    <a href="/dashboard" class="brand">
-        <img src="{{ url_for('static', path='img/favicon.svg') }}" alt="logo">
-        <span class="brand-text">SciFigLab</span>
-    </a>
-    <nav class="sidebar-nav">
-        <a href="/dashboard"><i class="bi bi-speedometer2"></i><span>仪表盘</span></a>
-        <a href="/projects"><i class="bi bi-folder"></i><span>项目</span></a>
-        <a href="/groups"><i class="bi bi-collection"></i><span>实验组</span></a>
-        <a href="/compare"><i class="bi bi-bar-chart-line"></i><span>对比分析</span></a>
-        {% if current_user is defined and current_user and current_user.is_admin %}
-        <a href="/admin"><i class="bi bi-gear-wide-connected"></i><span>管理后台</span></a>
-        {% endif %}
-        <a href="{{ github_repo_url|default('https://github.com') }}" target="_blank" rel="noopener" style="margin-top:auto;border-top:1px solid rgba(255,255,255,.06);padding-top:.6rem"><i class="bi bi-github"></i><span>GitHub</span></a>
-    </nav>
-    {% if current_user is defined and current_user and current_user.is_admin %}
-    <div style="padding:.4rem .6rem;border-top:1px solid rgba(255,255,255,.06)">
-        <button class="btn btn-sm btn-outline-light w-100" id="gitPullBtn" title="从 GitHub 拉取最新代码，仅更新代码，不修改数据"><i class="bi bi-arrow-repeat"></i> <span class="update-label">更新</span></button>
+    <div class="brand">
+        <img src="{{ url_for('static', path='img/favicon.svg') }}" alt="logo" id="brandLogo">
+        <a href="/dashboard" class="brand-text" style="text-decoration:none">SciFigLab</a>
+        <button class="sidebar-top-toggle" id="topToggle" title="收起/展开"><i class="bi bi-chevron-left"></i></button>
     </div>
-    {% endif %}
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">导航</div>
+        <a href="/dashboard"><i class="bi bi-grid-1x2"></i><span>仪表盘</span></a>
+        <a href="/projects"><i class="bi bi-folder2-open"></i><span>项目管理</span></a>
+        <a href="/groups"><i class="bi bi-layers"></i><span>实验组</span></a>
+        <a href="/compare"><i class="bi bi-bar-chart-line"></i><span>对比分析</span></a>
+        <a href="/diagrams"><i class="bi bi-diagram-3"></i><span>流程图</span></a>
+        {% if current_user is defined and current_user and current_user.is_admin %}
+        <div class="nav-section" style="margin-top:.5rem">系统</div>
+        <a href="/admin"><i class="bi bi-sliders"></i><span>管理后台</span></a>
+        {% endif %}
+    </nav>
+
     <div class="sidebar-footer">
         {% if current_user is defined and current_user %}
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <i class="bi bi-person-circle"></i>
-            <span class="user-label">{{ current_user.username }}</span>
+        <div class="user-trigger" id="userTrigger">
+            <div class="u-avatar">{{ current_user.username[:1]|upper }}</div>
+            <span class="u-name">{{ current_user.username }}</span>
+            <i class="bi bi-chevron-up u-chevron"></i>
         </div>
-        <a href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> <span>退出</span></a>
         {% else %}
-        <a href="/login"><i class="bi bi-box-arrow-in-right"></i> <span>登录</span></a>
+        <a href="/login" class="btn btn-sm btn-outline-light w-100"><i class="bi bi-box-arrow-in-right"></i> <span>登录</span></a>
         {% endif %}
     </div>
+    <button class="sidebar-collapse-btn" id="sidebarToggle"><i class="bi bi-chevron-double-left"></i><span>收起菜单</span></button>
 </aside>
+
+<!-- Brand popover (outside sidebar to avoid overflow clip) -->
+<div class="brand-popover" id="brandPopover">
+    <a href="{{ github_repo_url|default('https://github.com') }}" target="_blank" rel="noopener"><i class="bi bi-github"></i> GitHub 仓库</a>
+    {% if current_user is defined and current_user and current_user.is_admin %}
+    <button id="gitPullBtn"><i class="bi bi-arrow-repeat"></i> 拉取更新</button>
+    {% endif %}
+</div>
+
+<!-- User popover (outside sidebar to avoid overflow clip) -->
+{% if current_user is defined and current_user %}
+<div class="user-popover" id="userPopover">
+    <div class="up-email"><i class="bi bi-envelope me-1"></i>{{ current_user.email }}</div>
+    <button class="up-item danger" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> 退出登录</button>
+</div>
+{% endif %}
 
 <!-- Main content -->
 <div class="main-wrapper" id="mainWrapper">
-    <!-- Mobile header -->
     <div class="mobile-header">
         <button class="btn btn-sm btn-outline-light" id="mobileMenuBtn"><i class="bi bi-list"></i></button>
         <img src="{{ url_for('static', path='img/favicon.svg') }}" alt="logo"> <strong>SciFigLab</strong>
     </div>
 
-    <!-- Silent announcement banner -->
+    <div class="page-tabs" id="pageTabs"></div>
+
     <div id="annBanner" style="display:none"></div>
 
     <main>
@@ -104,13 +178,13 @@
     <!-- Popup announcement modal -->
     <div class="modal fade" id="annPopupModal" tabindex="-1">
         <div class="modal-dialog"><div class="modal-content">
-            <div class="modal-header bg-primary text-white py-2"><h6 class="modal-title mb-0"><i class="bi bi-megaphone"></i> <span id="annPopupTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header py-2" style="background:var(--accent);color:#fff"><h6 class="modal-title mb-0"><i class="bi bi-megaphone"></i> <span id="annPopupTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body" id="annPopupBody"></div>
         </div></div>
     </div>
 
     <footer>
-        <small>&copy; 2024 SciFigLab — 实验数据可视化图生成平台</small>
+        <small>&copy; 2024 SciFigLab &mdash; 科研实验数据管理与可视化平台</small>
     </footer>
 </div>
 
@@ -119,6 +193,31 @@
 <script src="{{ url_for('static', path='js/charts.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // User popover (click username to toggle)
+    var userTrigger = document.getElementById('userTrigger');
+    var userPopover = document.getElementById('userPopover');
+    if (userTrigger && userPopover) {
+        function positionUserPopover() {
+            var r = userTrigger.getBoundingClientRect();
+            userPopover.style.left = r.left + 'px';
+            userPopover.style.top = (r.top - 8) + 'px';
+            userPopover.style.transform = 'translateY(-100%)';
+            userPopover.style.minWidth = r.width + 'px';
+        }
+        userTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            positionUserPopover();
+            userPopover.classList.toggle('show');
+            userTrigger.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!userPopover.contains(e.target) && !userTrigger.contains(e.target)) {
+                userPopover.classList.remove('show');
+                userTrigger.classList.remove('open');
+            }
+        });
+    }
+
     // Logout
     var btn = document.getElementById('logoutBtn');
     if (btn) {
@@ -129,17 +228,48 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Sidebar toggle
+    // Sidebar toggle (both top mini button and bottom button)
     var sidebar = document.getElementById('sidebar');
     var wrapper = document.getElementById('mainWrapper');
     var toggler = document.getElementById('sidebarToggle');
+    var topToggle = document.getElementById('topToggle');
     var saved = localStorage.getItem('sidebar_collapsed');
     if (saved === '1') { sidebar.classList.add('collapsed'); wrapper.classList.add('shifted'); }
-    toggler.addEventListener('click', function() {
+    function doToggleSidebar() {
         sidebar.classList.toggle('collapsed');
         wrapper.classList.toggle('shifted');
         localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
-    });
+    }
+    toggler.addEventListener('click', doToggleSidebar);
+    if (topToggle) topToggle.addEventListener('click', doToggleSidebar);
+
+    // Brand popover (hover to show)
+    var brandArea = document.querySelector('.brand');
+    var brandPopover = document.getElementById('brandPopover');
+    if (brandArea && brandPopover) {
+        var brandTimer = null;
+        function positionPopover() {
+            var r = brandArea.getBoundingClientRect();
+            brandPopover.style.left = (r.right + 8) + 'px';
+            var topPos = Math.max(8, r.top + r.height / 2);
+            brandPopover.style.top = topPos + 'px';
+            brandPopover.style.transform = topPos <= 8 ? 'none' : 'translateY(-50%)';
+        }
+        brandArea.addEventListener('mouseenter', function() {
+            clearTimeout(brandTimer);
+            positionPopover();
+            brandPopover.classList.add('show');
+        });
+        brandArea.addEventListener('mouseleave', function() {
+            brandTimer = setTimeout(function(){ brandPopover.classList.remove('show'); }, 200);
+        });
+        brandPopover.addEventListener('mouseenter', function() {
+            clearTimeout(brandTimer);
+        });
+        brandPopover.addEventListener('mouseleave', function() {
+            brandTimer = setTimeout(function(){ brandPopover.classList.remove('show'); }, 150);
+        });
+    }
 
     // Mobile menu
     var mobileBtn = document.getElementById('mobileMenuBtn');
@@ -158,53 +288,126 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ── Page Tabs (browser-style) ──
+    (function() {
+        var TAB_ICONS = {
+            '/dashboard': 'bi-house-door-fill',
+            '/projects': 'bi-folder2-open',
+            '/groups': 'bi-layers',
+            '/compare': 'bi-bar-chart-line',
+            '/admin': 'bi-sliders',
+            '/experiments': 'bi-journal-code'
+        };
+        var TAB_NAMES = {
+            '/dashboard': '首页',
+            '/projects': '项目管理',
+            '/groups': '实验组',
+            '/compare': '对比分析',
+            '/admin': '管理后台'
+        };
+        function getTabIcon(url) {
+            for (var k in TAB_ICONS) { if (url.startsWith(k)) return TAB_ICONS[k]; }
+            return 'bi-file-earmark';
+        }
+        function getTabName(url) {
+            for (var k in TAB_NAMES) { if (url === k || url === k + '/') return TAB_NAMES[k]; }
+            var t = document.title.split('—')[0].split('–')[0].trim();
+            return t.length > 12 ? t.substring(0,12) + '…' : t;
+        }
+        function loadTabs() {
+            try { return JSON.parse(sessionStorage.getItem('page_tabs') || '[]'); } catch(e) { return []; }
+        }
+        function saveTabs(tabs) {
+            sessionStorage.setItem('page_tabs', JSON.stringify(tabs));
+        }
+        var curPath = window.location.pathname;
+        var tabs = loadTabs();
+        // Always have dashboard as first
+        if (!tabs.find(function(t){ return t.url === '/dashboard'; })) {
+            tabs.unshift({url: '/dashboard', name: '首页', icon: 'bi-house-door-fill'});
+        }
+        // Add current page
+        if (!tabs.find(function(t){ return t.url === curPath; })) {
+            tabs.push({url: curPath, name: getTabName(curPath), icon: getTabIcon(curPath)});
+        } else {
+            // Update name
+            tabs = tabs.map(function(t) { return t.url === curPath ? {url: t.url, name: getTabName(curPath), icon: getTabIcon(curPath)} : t; });
+        }
+        if (tabs.length > 12) tabs = [tabs[0]].concat(tabs.slice(tabs.length - 11));
+        saveTabs(tabs);
+
+        var container = document.getElementById('pageTabs');
+        if (!container) return;
+        var html = '';
+        tabs.forEach(function(t) {
+            var isActive = t.url === curPath;
+            var isHome = t.url === '/dashboard';
+            html += '<a class="page-tab' + (isActive ? ' active' : '') + (isHome ? ' page-tab-home' : '') + '" href="'+t.url+'" data-url="'+t.url+'">';
+            html += '<i class="tab-icon bi '+t.icon+'"></i>';
+            html += '<span>'+t.name+'</span>';
+            if (!isHome) {
+                html += ' <i class="bi bi-x tab-close" data-tab-url="'+t.url+'"></i>';
+            }
+            html += '</a>';
+        });
+        container.innerHTML = html;
+
+        // Close tab
+        container.querySelectorAll('.tab-close').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var url = this.getAttribute('data-tab-url');
+                var ts = loadTabs().filter(function(t){ return t.url !== url; });
+                saveTabs(ts);
+                if (url === curPath && ts.length) {
+                    window.location.href = ts[ts.length - 1].url;
+                } else {
+                    this.closest('.page-tab').remove();
+                }
+            });
+        });
+    })();
+
     // Git pull (admin only)
     var gitBtn = document.getElementById('gitPullBtn');
     if (gitBtn) {
         gitBtn.addEventListener('click', async function() {
-            if (!confirm('确定要从 GitHub 拉取最新代码吗？\n本操作只更新代码，不会更新数据库、用户和上传文件。')) return;
+            if (!confirm('确定要从 GitHub 拉取最新代码并更新项目吗？')) return;
             gitBtn.disabled = true;
-            gitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> <span class="update-label">更新中…</span>';
+            gitBtn.innerHTML = '<i class="bi bi-arrow-repeat spinner-border spinner-border-sm" style="width:14px;height:14px;border-width:2px"></i> 更新中…';
             try {
                 var r = await fetch('/api/admin/git-pull', {method:'POST'});
                 var d = await r.json();
-                if (d.ok) {
-                    alert((d.restart_scheduled ? '代码已更新，服务即将重启。' : '代码已更新，请手动重启服务。') + '\n' + (d.output || ''));
-                } else {
-                    alert('更新失败：' + (d.msg || '未知错误'));
-                }
-            } catch(e) {
-                alert('请求失败');
-            }
+                if (d.ok) { alert('更新成功！\n' + (d.output || '')); }
+                else { alert('更新失败：' + (d.msg || '未知错误')); }
+            } catch(e) { alert('请求失败'); }
             gitBtn.disabled = false;
-            gitBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> <span class="update-label">更新</span>';
+            gitBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 拉取更新';
+            brandPopover.classList.remove('show');
         });
     }
 
-    // ── Announcements display ──
+    // ── Announcements ──
     (async function() {
         try {
             var resp = await fetch('/api/announcements/active');
             if (!resp.ok) return;
             var anns = await resp.json();
             if (!anns.length) return;
-
-            // Silent banners
             var silents = anns.filter(function(a){ return a.display_type === 'silent'; });
             if (silents.length) {
                 var banner = document.getElementById('annBanner');
                 var html = '';
                 silents.forEach(function(a){
-                    html += '<div class="alert alert-info alert-dismissible mb-0 py-2 px-3 rounded-0" style="font-size:.85rem">';
-                    html += '<i class="bi bi-megaphone me-1"></i><strong>'+a.title+'</strong>';
-                    if (a.content) html += ' — '+a.content;
+                    html += '<div class="alert alert-info alert-dismissible mb-0 py-2 px-3 rounded-0 border-0" style="font-size:.85rem;background:linear-gradient(90deg,#eff6ff,#e0e7ff)">';
+                    html += '<i class="bi bi-megaphone me-1 text-primary"></i><strong>'+a.title+'</strong>';
+                    if (a.content) html += ' &mdash; '+a.content;
                     html += '<button type="button" class="btn-close" data-bs-dismiss="alert" style="padding:.5rem"></button></div>';
                 });
                 banner.innerHTML = html;
                 banner.style.display = 'block';
             }
-
-            // Popup (show first popup only, avoid annoyance)
             var popups = anns.filter(function(a){ return a.display_type === 'popup'; });
             if (popups.length) {
                 var p = popups[0];

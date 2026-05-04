@@ -227,3 +227,26 @@ class SiteConfig(Base):
     value = Column(Text, default="")
     description = Column(String(256), default="")
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# 11. Diagram 流程图表
+# ---------------------------------------------------------------------------
+class Diagram(Base):
+    __tablename__ = "diagrams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    title = Column(String(256), nullable=False, default="未命名流程图")
+    description = Column(Text, default="")
+    xml_data = Column(Text, default="")          # draw.io XML content
+    thumbnail = Column(Text, default="")          # base64 PNG thumbnail
+    layout_direction = Column(String(16), default="TB")  # TB / LR
+    color_scheme = Column(String(64), default="default")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # relationships
+    user = relationship("User", backref="diagrams")
+    project = relationship("Project", backref="diagrams")

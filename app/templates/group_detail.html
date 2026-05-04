@@ -9,15 +9,15 @@
     </ol>
 </nav>
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="page-header">
     <div>
         <h2 class="mb-1">{{ group.name }}</h2>
-        <span class="badge bg-light text-dark me-1">{{ group_type_labels.get(group.group_type, group.group_type) }}</span>
-        <small class="text-muted">项目: <a href="/projects/{{ project.id }}">{{ project.name }}</a></small>
+        <div class="d-flex align-items-center gap-2 mt-1">
+            <span class="badge bg-primary bg-opacity-10 text-primary">{{ group_type_labels.get(group.group_type, group.group_type) }}</span>
+            <small class="text-muted">项目: <a href="/projects/{{ project.id }}">{{ project.name }}</a></small>
+        </div>
     </div>
-    <div>
-        <button class="btn btn-outline-danger btn-sm" id="deleteGroupBtn"><i class="bi bi-trash"></i> 删除组</button>
-    </div>
+    <button class="btn btn-outline-danger btn-sm" id="deleteGroupBtn"><i class="bi bi-trash"></i> 删除组</button>
 </div>
 
 {% if group.description %}
@@ -54,10 +54,13 @@
                         <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
                         <select id="groupChartType" class="form-select form-select-sm">
                             <option value="line" selected>折线图</option>
+                            <option value="smooth">平滑曲线</option>
                             <option value="bar">柱状图</option>
                             <option value="scatter">散点图</option>
                             <option value="area">面积图</option>
                             <option value="step">阶梯图</option>
+                            <option value="dashed">虚线图</option>
+                            <option value="thick">粗线+阴影</option>
                         </select>
                     </div>
                     <div class="col-6">
@@ -107,10 +110,17 @@
                     <div id="paperTableHtml" class="table-responsive mb-2"></div>
                     <div class="mb-2">
                         <label class="form-label mb-0" style="font-size:0.8rem">Markdown</label>
-                        <textarea id="paperTableMd" class="form-control form-control-sm" rows="5" readonly style="font-family:monospace;font-size:0.75rem;"></textarea>
-                        <button class="btn btn-outline-secondary btn-sm mt-1" id="copyMdBtn"><i class="bi bi-clipboard"></i> 复制 Markdown</button>
-                        <button class="btn btn-outline-secondary btn-sm mt-1" id="downloadCsvBtn"><i class="bi bi-download"></i> CSV</button>
-                        <button class="btn btn-outline-primary btn-sm mt-1" id="downloadWordBtn"><i class="bi bi-file-earmark-word"></i> Word</button>
+                        <textarea id="paperTableMd" class="form-control form-control-sm" rows="4" readonly style="font-family:monospace;font-size:0.75rem;"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label mb-0" style="font-size:0.8rem">LaTeX<i class="help-tip" data-tip="可直接粘贴到 LaTeX 论文中使用，已包含 booktabs 格式">?</i></label>
+                        <textarea id="paperTableLatex" class="form-control form-control-sm" rows="4" readonly style="font-family:monospace;font-size:0.75rem;"></textarea>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <button class="btn btn-outline-secondary btn-sm" id="copyMdBtn"><i class="bi bi-clipboard me-1"></i>Markdown</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="copyLatexBtn"><i class="bi bi-clipboard me-1"></i>LaTeX</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="downloadCsvBtn"><i class="bi bi-download me-1"></i>CSV</button>
+                        <button class="btn btn-outline-primary btn-sm" id="downloadWordBtn"><i class="bi bi-file-earmark-word me-1"></i>Word</button>
                     </div>
                 </div>
             </div>
@@ -298,6 +308,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 else if (chartType === 'scatter') { item.type = 'scatter'; item.symbolSize = 6; }
                 else if (chartType === 'area') { item.type = 'line'; item.smooth = true; item.areaStyle = { opacity: 0.25 }; item.lineStyle = { color: color, width: 2 }; }
                 else if (chartType === 'step') { item.type = 'line'; item.step = 'middle'; item.symbol = 'none'; item.lineStyle = { color: color, width: 2 }; }
+                else if (chartType === 'smooth') { item.type = 'line'; item.smooth = true; item.symbol = 'circle'; item.symbolSize = 3; item.lineStyle = { color: color, width: 2.5 }; }
+                else if (chartType === 'dashed') { item.type = 'line'; item.symbol = 'diamond'; item.symbolSize = 5; item.lineStyle = { color: color, width: 2, type: 'dashed' }; }
+                else if (chartType === 'thick') { item.type = 'line'; item.smooth = true; item.symbol = 'none'; item.lineStyle = { color: color, width: 3.5 }; item.areaStyle = { opacity: 0.08 }; }
                 else { item.type = 'line'; item.symbol = 'circle'; item.symbolSize = 4; item.lineStyle = { color: color, width: 2 }; }
                 seriesArr.push(item);
                 if (s.best_point) {
@@ -413,6 +426,30 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '</tbody></table>';
             document.getElementById('paperTableHtml').innerHTML = html;
             document.getElementById('paperTableMd').value = data.markdown || '';
+
+            // Generate LaTeX (booktabs style)
+            var latex = '\\begin{table}[htbp]\n\\centering\n\\caption{Experimental Results}\n\\label{tab:results}\n';
+            latex += '\\begin{tabular}{l' + 'c'.repeat(metricNames.length) + '}\n\\toprule\n';
+            latex += 'Method';
+            metricNames.forEach(function(m) {
+                var arrow = (directions[m] === 'lower_better') ? ' $\\downarrow$' : ' $\\uparrow$';
+                latex += ' & ' + m.replace(/_/g, '\\_') + arrow;
+            });
+            latex += ' \\\\\n\\midrule\n';
+            (data.rows || []).forEach(function(row, idx) {
+                latex += row.display_name.replace(/_/g, '\\_');
+                metricNames.forEach(function(m) {
+                    var val = row.values[m];
+                    var formatted = val !== null && val !== undefined ? val.toFixed(decimals) : '-';
+                    var isBest = bestMap[m] && bestMap[m].row_idx === idx;
+                    if (isBest && boldBest) formatted = '\\textbf{' + formatted + '}';
+                    latex += ' & ' + formatted;
+                });
+                latex += ' \\\\\n';
+            });
+            latex += '\\bottomrule\n\\end{tabular}\n\\end{table}';
+            document.getElementById('paperTableLatex').value = latex;
+
             document.getElementById('paperTableResult').style.display = 'block';
 
             // Store data for downloads
@@ -433,7 +470,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.execCommand('copy');
         this.innerHTML = '<i class="bi bi-check"></i> 已复制';
         var btn = this;
-        setTimeout(function(){ btn.innerHTML = '<i class="bi bi-clipboard"></i> 复制 Markdown'; }, 1500);
+        setTimeout(function(){ btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Markdown'; }, 1500);
+    });
+
+    // Copy LaTeX
+    document.getElementById('copyLatexBtn').addEventListener('click', function() {
+        var ta = document.getElementById('paperTableLatex');
+        ta.select();
+        document.execCommand('copy');
+        this.innerHTML = '<i class="bi bi-check"></i> 已复制';
+        var btn = this;
+        setTimeout(function(){ btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>LaTeX'; }, 1500);
     });
 
     // Download CSV

@@ -10,13 +10,15 @@
 </nav>
 
 <!-- Project header -->
-<div class="d-flex justify-content-between align-items-start mb-4">
+<div class="page-header">
     <div>
         <h2 class="mb-1">{{ project.name }}</h2>
-        <span class="badge bg-secondary me-2">{{ project.area_label }}</span>
-        <small class="text-muted">创建于 {{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else '-' }}</small>
+        <div class="d-flex align-items-center gap-2 mt-1">
+            <span class="badge bg-primary bg-opacity-10 text-primary">{{ project.area_label }}</span>
+            <small class="text-muted">创建于 {{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else '-' }}</small>
+        </div>
     </div>
-    <div class="btn-group">
+    <div class="d-flex gap-2">
         <a href="/projects/{{ project.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
         <button class="btn btn-outline-danger btn-sm" id="deleteProjectBtn"><i class="bi bi-trash"></i> 删除</button>
     </div>
@@ -156,24 +158,24 @@ async function loadExperiments() {
         wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无实验。</p>';
         return;
     }
-    var html = '<div class="table-responsive"><table class="table table-hover mb-0 align-middle"><thead class="table-light"><tr>';
-    html += '<th>实验名称</th><th>编号</th><th>状态</th><th>标签</th><th>创建时间</th><th>开始</th><th>结束</th><th>时长</th><th>标记</th><th>操作</th>';
+    var html = '<div class="table-responsive"><table class="table table-hover mb-0 align-middle" style="font-size:.88rem"><thead class="table-light"><tr>';
+    html += '<th>实验</th><th>状态</th><th>标签</th><th>时间</th><th>标记</th><th style="width:90px">操作</th>';
     html += '</tr></thead><tbody>';
     exps.forEach(function(e) {
         var badges = '';
-        if (e.is_best) badges += '<span class="badge bg-warning text-dark me-1" title="最优"><i class="bi bi-star-fill"></i></span>';
-        if (e.is_paper_used) badges += '<span class="badge bg-info me-1" title="论文采用"><i class="bi bi-journal-check"></i></span>';
-        if (e.is_archived) badges += '<span class="badge bg-secondary me-1" title="已归档"><i class="bi bi-archive"></i></span>';
-        var tags = e.tags ? e.tags.split(',').map(function(t){return '<span class="badge bg-light text-dark me-1">'+t.trim()+'</span>';}).join('') : '-';
+        if (e.is_best) badges += '<span class="badge bg-warning bg-opacity-25 text-warning me-1" title="最优"><i class="bi bi-star-fill"></i></span>';
+        if (e.is_paper_used) badges += '<span class="badge bg-info bg-opacity-25 text-info me-1" title="论文采用"><i class="bi bi-journal-check"></i></span>';
+        if (e.is_archived) badges += '<span class="badge bg-secondary bg-opacity-25 text-secondary me-1" title="已归档"><i class="bi bi-archive"></i></span>';
+        var tags = e.tags ? e.tags.split(',').map(function(t){return '<span class="badge bg-light text-dark border me-1" style="font-size:.7rem">'+t.trim()+'</span>';}).join('') : '<span class="text-muted" style="font-size:.78rem">—</span>';
+        var dur = duration(e.started_at, e.ended_at);
         html += '<tr>';
-        html += '<td><a href="/experiments/'+e.id+'" class="text-decoration-none fw-bold">'+e.name+'</a></td>';
-        html += '<td><code>'+e.experiment_code+'</code></td>';
-        html += '<td><span class="badge bg-'+(STATUS_COLORS[e.status]||'secondary')+'">'+(STATUS_LABELS[e.status]||e.status)+'</span></td>';
+        html += '<td><div><a href="/experiments/'+e.id+'" class="text-decoration-none fw-semibold">'+e.name+'</a></div>';
+        html += '<small class="text-muted" style="font-size:.75rem">'+e.experiment_code+'</small></td>';
+        html += '<td><span class="badge bg-'+(STATUS_COLORS[e.status]||'secondary')+'" style="font-size:.72rem">'+(STATUS_LABELS[e.status]||e.status)+'</span></td>';
         html += '<td>'+tags+'</td>';
-        html += '<td><small>'+fmtDt(e.created_at)+'</small></td>';
-        html += '<td><small>'+fmtDt(e.started_at)+'</small></td>';
-        html += '<td><small>'+fmtDt(e.ended_at)+'</small></td>';
-        html += '<td><small>'+duration(e.started_at,e.ended_at)+'</small></td>';
+        html += '<td><small class="text-muted">'+fmtDt(e.created_at)+'</small>';
+        if (dur !== '-') html += '<br><small class="text-muted" style="font-size:.72rem"><i class="bi bi-clock me-1"></i>'+dur+'</small>';
+        html += '</td>';
         html += '<td>'+badges+'</td>';
         html += '<td class="text-nowrap">';
         html += '<a href="/experiments/'+e.id+'/edit" class="btn btn-outline-secondary btn-sm me-1" title="编辑"><i class="bi bi-pencil"></i></a>';

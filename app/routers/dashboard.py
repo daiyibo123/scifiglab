@@ -7,20 +7,9 @@ from app.core.security import get_current_user_optional
 from app.core.templates import templates
 from app.database.session import get_db
 from app.database.models import Project, Experiment, ExperimentGroup, UploadedFile, Metric
+from app.core.disciplines import RESEARCH_AREAS
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
-RESEARCH_AREAS = {
-    "deep_learning": "深度学习",
-    "computer_science": "计算机科学",
-    "biology": "生物学",
-    "chemistry": "化学",
-    "materials": "材料科学",
-    "physics": "物理学",
-    "engineering": "工程学",
-    "medicine": "医学",
-    "other": "其他",
-}
 
 
 @router.get("")

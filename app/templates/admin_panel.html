@@ -1,135 +1,253 @@
 {% extends "base.html" %}
 {% block title %}管理后台 — SciFigLab{% endblock %}
 
+{% block extra_head %}
+<style>
+/* Admin hero */
+.admin-hero{background:linear-gradient(135deg,#1e293b 0%,#334155 100%);color:#fff;border-radius:.75rem;padding:1.5rem 2rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.admin-hero h2{font-size:1.3rem;font-weight:700;margin:0}
+.admin-hero p{margin:.25rem 0 0;font-size:.82rem;color:#94a3b8}
+
+/* Ring gauges */
+.admin-metric{border-radius:.75rem;padding:1rem;text-align:center;background:#fff;border:1px solid var(--gray-200);position:relative;overflow:hidden;transition:box-shadow .2s}
+.admin-metric:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.admin-metric .metric-ring{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;position:relative}
+.admin-metric .metric-ring svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.admin-metric .metric-ring .metric-val{font-size:1rem;font-weight:800;z-index:1}
+.admin-metric .metric-label{font-size:.78rem;color:var(--gray-600);font-weight:600}
+.admin-metric .metric-sub{font-size:.7rem;color:var(--gray-400);margin-top:.15rem}
+
+/* Tab nav */
+.admin-tab-nav{border-bottom:2px solid var(--gray-200);margin-bottom:1.25rem}
+.admin-tab-nav .nav-link{border:none;color:var(--gray-600);font-weight:600;font-size:.88rem;padding:.6rem 1.25rem;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:0;transition:all .15s}
+.admin-tab-nav .nav-link.active{color:var(--primary);border-bottom-color:var(--primary);background:transparent}
+.admin-tab-nav .nav-link:hover:not(.active){color:var(--gray-800)}
+
+/* Flag category cards */
+.flag-category{margin-bottom:1.25rem}
+.flag-cat-header{display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border-radius:.5rem .5rem 0 0;font-weight:700;font-size:.82rem;letter-spacing:.02em}
+.flag-cat-header i{font-size:1rem}
+.flag-item{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid #f1f5f9;gap:.75rem}
+.flag-item:last-child{border-bottom:none}
+.flag-info{flex:1;min-width:0}
+.flag-info .flag-key{font-size:.78rem;font-weight:600;color:#334155}
+.flag-info .flag-desc{font-size:.72rem;color:#94a3b8;margin-top:.1rem}
+.flag-toggle{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+
+/* Custom toggle switch */
+.switch{position:relative;width:42px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:22px;transition:.2s}
+.switch .slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.switch input:checked + .slider{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.switch input:checked + .slider::before{transform:translateX(20px)}
+
+/* User card style */
+.user-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;border-bottom:1px solid #f1f5f9}
+.user-row:last-child{border-bottom:none}
+.user-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0}
+.user-meta{flex:1;min-width:0}
+.user-meta .user-name{font-weight:600;font-size:.85rem;color:#1e293b}
+.user-meta .user-email{font-size:.72rem;color:#94a3b8}
+.user-badges{display:flex;gap:.35rem;flex-shrink:0;align-items:center}
+</style>
+{% endblock %}
+
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-gear-wide-connected"></i> 管理后台</h2>
-
-<!-- Server monitoring -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-activity"></i> 服务器状态</h5>
-        <div>
-            <button class="btn btn-sm btn-outline-primary" id="refreshStatusBtn"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
-            <button class="btn btn-sm btn-outline-danger ms-1" id="sendAlertBtn"><i class="bi bi-envelope-exclamation"></i> 发送预警邮件</button>
-        </div>
+<!-- Admin hero -->
+<div class="admin-hero">
+    <div>
+        <h2><i class="bi bi-sliders me-2"></i>管理后台</h2>
+        <p>系统配置、用户管理、公告发布</p>
     </div>
-    <div class="card-body">
-        <div class="row g-3" id="serverStatusCards">
-            <div class="col-md-3">
-                <div class="border rounded p-3 text-center">
-                    <div class="text-muted mb-1" style="font-size:.8rem">CPU 使用率</div>
-                    <div class="fs-4 fw-bold" id="statCpu">—</div>
-                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barCpu" style="width:0"></div></div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 text-center">
-                    <div class="text-muted mb-1" style="font-size:.8rem">内存</div>
-                    <div class="fs-4 fw-bold" id="statMem">—</div>
-                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barMem" style="width:0"></div></div>
-                    <small class="text-muted" id="statMemDetail"></small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 text-center">
-                    <div class="text-muted mb-1" style="font-size:.8rem">磁盘</div>
-                    <div class="fs-4 fw-bold" id="statDisk">—</div>
-                    <div class="progress mt-1" style="height:6px"><div class="progress-bar" id="barDisk" style="width:0"></div></div>
-                    <small class="text-muted" id="statDiskDetail"></small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="border rounded p-3 text-center">
-                    <div class="text-muted mb-1" style="font-size:.8rem">数据目录</div>
-                    <div class="fs-4 fw-bold" id="statData">—</div>
-                </div>
-            </div>
-        </div>
-        <div id="alertsWrap" class="mt-2"></div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-light" id="refreshStatusBtn"><i class="bi bi-arrow-clockwise me-1"></i>刷新</button>
+        <button class="btn btn-sm btn-outline-light" id="sendAlertBtn"><i class="bi bi-envelope-exclamation me-1"></i>预警邮件</button>
     </div>
 </div>
 
-<!-- Feature flags -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-toggles"></i> 功能开关</h5></div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead class="table-light"><tr><th>配置项</th><th>描述</th><th>当前值</th><th>操作</th></tr></thead>
-                <tbody>
-                {% for key, flag in flags.items() %}
-                <tr>
-                    <td><code>{{ key }}</code></td>
-                    <td>{{ flag.description }}</td>
-                    <td>
-                        {% if flag.value in ('true', 'false') %}
-                        <span class="badge {{ 'bg-success' if flag.value == 'true' else 'bg-secondary' }}">{{ '开' if flag.value == 'true' else '关' }}</span>
-                        {% else %}
-                        <code>{{ flag.value }}</code>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if flag.value in ('true', 'false') %}
-                        <button class="btn btn-sm {{ 'btn-outline-danger' if flag.value == 'true' else 'btn-outline-success' }} btn-toggle-flag"
-                                data-key="{{ key }}" data-val="{{ 'false' if flag.value == 'true' else 'true' }}">
-                            {{ '关闭' if flag.value == 'true' else '开启' }}
-                        </button>
-                        {% else %}
-                        <div class="input-group input-group-sm" style="width:200px">
-                            <input type="text" class="form-control flag-input" data-key="{{ key }}" value="{{ flag.value }}">
-                            <button class="btn btn-outline-primary btn-set-flag" data-key="{{ key }}">保存</button>
+<!-- Server monitoring ring gauges -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="admin-metric">
+            <div class="metric-ring">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="5"/><circle id="ringCpu" cx="36" cy="36" r="30" fill="none" stroke="var(--primary)" stroke-width="5" stroke-dasharray="0 188.5" stroke-linecap="round"/></svg>
+                <span class="metric-val" id="statCpu">&mdash;</span>
+            </div>
+            <div class="metric-label">CPU 使用率</div>
+            <div class="metric-sub" id="statCpuSub"></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="admin-metric">
+            <div class="metric-ring">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="5"/><circle id="ringMem" cx="36" cy="36" r="30" fill="none" stroke="#10b981" stroke-width="5" stroke-dasharray="0 188.5" stroke-linecap="round"/></svg>
+                <span class="metric-val" id="statMem">&mdash;</span>
+            </div>
+            <div class="metric-label">内存</div>
+            <div class="metric-sub" id="statMemDetail"></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="admin-metric">
+            <div class="metric-ring">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="5"/><circle id="ringDisk" cx="36" cy="36" r="30" fill="none" stroke="#f59e0b" stroke-width="5" stroke-dasharray="0 188.5" stroke-linecap="round"/></svg>
+                <span class="metric-val" id="statDisk">&mdash;</span>
+            </div>
+            <div class="metric-label">磁盘</div>
+            <div class="metric-sub" id="statDiskDetail"></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="admin-metric">
+            <div class="metric-ring">
+                <svg width="72" height="72"><circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="5"/><circle id="ringData" cx="36" cy="36" r="30" fill="none" stroke="#06b6d4" stroke-width="5" stroke-dasharray="0 188.5" stroke-linecap="round"/></svg>
+                <span class="metric-val" id="statData">&mdash;</span>
+            </div>
+            <div class="metric-label">数据目录</div>
+        </div>
+    </div>
+</div>
+<div id="alertsWrap" class="mb-4"></div>
+
+<!-- Tab navigation -->
+<ul class="nav admin-tab-nav" role="tablist">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabFlags"><i class="bi bi-toggles me-1"></i>功能开关</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabUsers"><i class="bi bi-people me-1"></i>用户管理 <span class="badge bg-light text-dark ms-1">{{ user_count }}</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAnn"><i class="bi bi-megaphone me-1"></i>公告管理</a></li>
+</ul>
+
+<div class="tab-content">
+    <!-- Flags — categorized -->
+    <div class="tab-pane fade show active" id="tabFlags">
+        <div class="row g-3">
+            <!-- Category: 权限控制 -->
+            <div class="col-lg-6">
+                <div class="card flag-category">
+                    <div class="flag-cat-header" style="background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));color:#6366f1">
+                        <i class="bi bi-shield-check"></i> 权限控制
+                    </div>
+                    {% for key in ['allow_registration','allow_file_upload','allow_compare','allow_groups','allow_paper_table'] %}
+                    {% if key in flags %}
+                    <div class="flag-item">
+                        <div class="flag-info">
+                            <div class="flag-key">{{ flags[key].description }}</div>
+                            <div class="flag-desc"><code style="font-size:.7rem">{{ key }}</code></div>
                         </div>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                        <div class="flag-toggle">
+                            <label class="switch">
+                                <input type="checkbox" class="flag-switch" data-key="{{ key }}"
+                                       {% if flags[key].value == 'true' %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Category: 系统限制 & 公告 -->
+            <div class="col-lg-6">
+                <div class="card flag-category">
+                    <div class="flag-cat-header" style="background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(251,191,36,.06));color:#d97706">
+                        <i class="bi bi-gear"></i> 系统设置
+                    </div>
+                    {% for key in ['max_upload_mb','site_announcement'] %}
+                    {% if key in flags %}
+                    <div class="flag-item">
+                        <div class="flag-info">
+                            <div class="flag-key">{{ flags[key].description }}</div>
+                            <div class="flag-desc"><code style="font-size:.7rem">{{ key }}</code></div>
+                        </div>
+                        <div class="flag-toggle" style="min-width:160px">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control flag-input" data-key="{{ key }}" value="{{ flags[key].value }}" style="font-size:.8rem">
+                                <button class="btn btn-outline-primary btn-set-flag" data-key="{{ key }}" style="font-size:.78rem">保存</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="card flag-category">
+                    <div class="flag-cat-header" style="background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(248,113,113,.06));color:#ef4444">
+                        <i class="bi bi-bell"></i> 监控告警
+                    </div>
+                    {% for key in ['alert_cpu_warning','alert_cpu_critical','alert_mem_warning','alert_mem_critical','alert_disk_warning','alert_disk_critical','alert_email_enabled'] %}
+                    {% if key in flags %}
+                    <div class="flag-item">
+                        <div class="flag-info">
+                            <div class="flag-key">{{ flags[key].description }}</div>
+                            <div class="flag-desc"><code style="font-size:.7rem">{{ key }}</code></div>
+                        </div>
+                        <div class="flag-toggle" {% if flags[key].value not in ('true','false') %}style="min-width:120px"{% endif %}>
+                            {% if flags[key].value in ('true', 'false') %}
+                            <label class="switch">
+                                <input type="checkbox" class="flag-switch" data-key="{{ key }}"
+                                       {% if flags[key].value == 'true' %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                            {% else %}
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control flag-input" data-key="{{ key }}" value="{{ flags[key].value }}" style="font-size:.8rem">
+                                <button class="btn btn-outline-primary btn-set-flag" data-key="{{ key }}" style="font-size:.78rem">保存</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- User management -->
-<div class="card shadow-sm">
-    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-people"></i> 用户管理 <span class="text-muted">({{ user_count }})</span></h5></div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead class="table-light"><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>管理员</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
-                <tbody>
-                {% for u in users %}
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td><strong>{{ u.username }}</strong></td>
-                    <td>{{ u.email }}</td>
-                    <td>{% if u.is_admin %}<span class="badge bg-warning text-dark">管理员</span>{% else %}-{% endif %}</td>
-                    <td><span class="badge {{ 'bg-success' if u.is_active else 'bg-danger' }}">{{ '正常' if u.is_active else '已禁用' }}</span></td>
-                    <td><small>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '-' }}</small></td>
-                    <td>
-                        {% if not u.is_admin %}
-                        <button class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} btn-toggle-user"
-                                data-uid="{{ u.id }}" data-name="{{ u.username }}">
-                            {{ '禁用' if u.is_active else '启用' }}
-                        </button>
-                        {% else %}
-                        <small class="text-muted">—</small>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+    <!-- Users — card style -->
+    <div class="tab-pane fade" id="tabUsers">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:#fff">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-people me-1"></i> 用户列表</h6>
+                <span class="badge bg-primary bg-opacity-10 text-primary">共 {{ user_count }} 人</span>
+            </div>
+            {% for u in users %}
+            <div class="user-row">
+                <div class="user-avatar" style="background:{{ ['linear-gradient(135deg,#6366f1,#8b5cf6)','linear-gradient(135deg,#10b981,#34d399)','linear-gradient(135deg,#f59e0b,#fbbf24)','linear-gradient(135deg,#3b82f6,#60a5fa)','linear-gradient(135deg,#ec4899,#f472b6)','linear-gradient(135deg,#06b6d4,#22d3ee)'][loop.index0 % 6] }}">
+                    {{ u.username[0]|upper }}
+                </div>
+                <div class="user-meta">
+                    <div class="user-name">{{ u.username }}</div>
+                    <div class="user-email">{{ u.email }} &middot; {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '-' }}</div>
+                </div>
+                <div class="user-badges">
+                    {% if u.is_admin %}
+                    <span class="badge" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);font-size:.7rem">管理员</span>
+                    {% else %}
+                    <span class="badge bg-light text-dark" style="font-size:.7rem">用户</span>
+                    {% endif %}
+                    <span class="badge {{ 'bg-success' if u.is_active else 'bg-danger' }}" style="font-size:.7rem">{{ '正常' if u.is_active else '已禁用' }}</span>
+                    {% if not u.is_admin %}
+                    <button class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} btn-toggle-user"
+                            data-uid="{{ u.id }}" data-name="{{ u.username }}" style="font-size:.72rem;padding:.2rem .5rem">
+                        {{ '禁用' if u.is_active else '启用' }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
-</div>
-<!-- Announcements -->
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-megaphone"></i> 公告管理</h5>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#annModal" id="newAnnBtn"><i class="bi bi-plus-lg"></i> 新建公告</button>
-    </div>
-    <div class="card-body p-0" id="annListWrap">
-        <p class="text-muted p-3 mb-0">加载中…</p>
+
+    <!-- Announcements -->
+    <div class="tab-pane fade" id="tabAnn">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:#fff">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-megaphone me-1"></i> 公告列表</h6>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#annModal" id="newAnnBtn"><i class="bi bi-plus-lg me-1"></i>新建</button>
+            </div>
+            <div class="card-body p-0" id="annListWrap">
+                <div class="empty-state"><i class="bi bi-hourglass-split"></i><p>加载中…</p></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -137,33 +255,37 @@
 <div class="modal fade" id="annModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title" id="annModalTitle">新建公告</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff">
+                <h5 class="modal-title" id="annModalTitle">新建公告</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <input type="hidden" id="annEditId" value="">
-                <div class="mb-2"><label class="form-label mb-0">标题</label><input type="text" class="form-control form-control-sm" id="annTitle"></div>
-                <div class="mb-2"><label class="form-label mb-0">内容</label><textarea class="form-control form-control-sm" rows="3" id="annContent"></textarea></div>
-                <div class="row g-2 mb-2">
-                    <div class="col-6"><label class="form-label mb-0">显示方式</label>
-                        <select class="form-select form-select-sm" id="annDisplayType">
+                <div class="mb-3"><label class="form-label fw-semibold">标题</label><input type="text" class="form-control" id="annTitle" placeholder="输入公告标题"></div>
+                <div class="mb-3"><label class="form-label fw-semibold">内容</label><textarea class="form-control" rows="3" id="annContent" placeholder="输入公告内容（可选）"></textarea></div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6"><label class="form-label fw-semibold">显示方式</label>
+                        <select class="form-select" id="annDisplayType">
                             <option value="silent">静默横幅</option>
-                            <option value="popup">弹窗</option>
+                            <option value="popup">弹窗通知</option>
                         </select>
                     </div>
-                    <div class="col-6"><label class="form-label mb-0">状态</label>
-                        <select class="form-select form-select-sm" id="annStatus">
+                    <div class="col-6"><label class="form-label fw-semibold">状态</label>
+                        <select class="form-select" id="annStatus">
                             <option value="draft">草稿</option>
                             <option value="published">发布</option>
                             <option value="ended">结束</option>
                         </select>
                     </div>
                 </div>
-                <div class="row g-2 mb-2">
-                    <div class="col-6"><label class="form-label mb-0">开始时间（留空=立即）</label><input type="datetime-local" class="form-control form-control-sm" id="annStartAt"></div>
-                    <div class="col-6"><label class="form-label mb-0">结束时间（留空=永久）</label><input type="datetime-local" class="form-control form-control-sm" id="annEndAt"></div>
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label fw-semibold">开始时间 <small class="text-muted fw-normal">(留空=立即)</small></label><input type="datetime-local" class="form-control" id="annStartAt"></div>
+                    <div class="col-6"><label class="form-label fw-semibold">结束时间 <small class="text-muted fw-normal">(留空=永久)</small></label><input type="datetime-local" class="form-control" id="annEndAt"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary btn-sm" id="annSaveBtn">保存</button>
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" id="annSaveBtn">保存</button>
             </div>
         </div>
     </div>
@@ -173,44 +295,55 @@
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ── Server status ──
-    function barColor(pct) { return pct >= 90 ? 'bg-danger' : (pct >= 70 ? 'bg-warning' : 'bg-success'); }
+    // ── Server status with ring gauges ──
+    var CIRC = 2 * Math.PI * 30; // 188.5
+
+    function ringColor(pct) { return pct >= 90 ? '#ef4444' : (pct >= 70 ? '#f59e0b' : null); }
+    function setRing(id, pct, defaultColor) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var dash = (pct / 100) * CIRC;
+        el.setAttribute('stroke-dasharray', dash + ' ' + CIRC);
+        var c = ringColor(pct);
+        if (c) el.setAttribute('stroke', c);
+        else if (defaultColor) el.setAttribute('stroke', defaultColor);
+    }
 
     async function loadServerStatus() {
         try {
             var r = await fetch('/api/admin/server-status');
             var d = await r.json();
             var s = d.status;
+
             document.getElementById('statCpu').textContent = s.cpu_percent + '%';
-            var bcpu = document.getElementById('barCpu');
-            bcpu.style.width = s.cpu_percent + '%'; bcpu.className = 'progress-bar ' + barColor(s.cpu_percent);
+            setRing('ringCpu', s.cpu_percent, 'var(--primary)');
+            document.getElementById('statCpuSub').textContent = s.cpu_count + ' 核';
 
             document.getElementById('statMem').textContent = s.memory_percent + '%';
-            var bmem = document.getElementById('barMem');
-            bmem.style.width = s.memory_percent + '%'; bmem.className = 'progress-bar ' + barColor(s.memory_percent);
+            setRing('ringMem', s.memory_percent, '#10b981');
             document.getElementById('statMemDetail').textContent = s.memory_used_gb + ' / ' + s.memory_total_gb + ' GB';
 
             document.getElementById('statDisk').textContent = s.disk_percent + '%';
-            var bdisk = document.getElementById('barDisk');
-            bdisk.style.width = s.disk_percent + '%'; bdisk.className = 'progress-bar ' + barColor(s.disk_percent);
-            document.getElementById('statDiskDetail').textContent = s.disk_used_gb + ' / ' + s.disk_total_gb + ' GB (剩余 ' + s.disk_free_gb + ' GB)';
+            setRing('ringDisk', s.disk_percent, '#f59e0b');
+            document.getElementById('statDiskDetail').textContent = s.disk_used_gb + ' / ' + s.disk_total_gb + ' GB';
 
             document.getElementById('statData').textContent = s.data_dir_size_mb + ' MB';
+            var dataPct = Math.min(100, (s.data_dir_size_mb / (s.disk_total_gb * 1024)) * 100);
+            setRing('ringData', dataPct, '#06b6d4');
 
-            // Alerts
             var wrap = document.getElementById('alertsWrap');
             if (d.alerts && d.alerts.length) {
                 var html = '';
                 d.alerts.forEach(function(a) {
                     var cls = a.level === 'critical' ? 'alert-danger' : 'alert-warning';
-                    html += '<div class="alert '+cls+' py-1 px-2 mb-1" style="font-size:.85rem"><strong>['+a.metric+']</strong> '+a.message+'</div>';
+                    html += '<div class="alert '+cls+' py-2 px-3 mb-1 border-0" style="font-size:.85rem;border-radius:.5rem"><i class="bi bi-exclamation-triangle me-1"></i><strong>['+a.metric+']</strong> '+a.message+'</div>';
                 });
                 wrap.innerHTML = html;
             } else {
-                wrap.innerHTML = '<div class="alert alert-success py-1 px-2 mb-0" style="font-size:.85rem"><i class="bi bi-check-circle"></i> 服务器状态正常</div>';
+                wrap.innerHTML = '<div class="alert alert-success py-2 px-3 mb-0 border-0" style="font-size:.85rem;border-radius:.5rem"><i class="bi bi-check-circle me-1"></i> 服务器状态正常，所有指标在安全范围内</div>';
             }
         } catch(e) {
-            document.getElementById('alertsWrap').innerHTML = '<div class="alert alert-secondary py-1 px-2 mb-0" style="font-size:.85rem">无法获取服务器状态</div>';
+            document.getElementById('alertsWrap').innerHTML = '<div class="alert alert-secondary py-2 px-3 mb-0 border-0" style="font-size:.85rem">无法获取服务器状态</div>';
         }
     }
     loadServerStatus();
@@ -226,11 +359,11 @@ document.addEventListener('DOMContentLoaded', function() {
         this.disabled = false;
     });
 
-    // Toggle boolean flags
-    document.querySelectorAll('.btn-toggle-flag').forEach(function(btn) {
-        btn.addEventListener('click', async function() {
+    // Toggle boolean flags via switches
+    document.querySelectorAll('.flag-switch').forEach(function(sw) {
+        sw.addEventListener('change', async function() {
             var key = this.dataset.key;
-            var val = this.dataset.val;
+            var val = this.checked ? 'true' : 'false';
             this.disabled = true;
             var resp = await fetch('/api/admin/flags', {
                 method: 'POST',
@@ -239,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             var d = await resp.json();
             if (d.ok) location.reload();
-            else { alert(d.detail || d.msg); this.disabled = false; }
+            else { alert(d.detail || d.msg); this.checked = !this.checked; this.disabled = false; }
         });
     });
 

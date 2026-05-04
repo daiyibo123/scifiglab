@@ -2,8 +2,8 @@
 {% block title %}实验组 — SciFigLab{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-collection"></i> 实验组</h2>
+<div class="page-header">
+    <h2><i class="bi bi-layers"></i> 实验组</h2>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
         <i class="bi bi-plus-lg"></i> 新建实验组
     </button>
@@ -13,7 +13,7 @@
 <div class="row g-3">
     {% for g in groups %}
     <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm h-100">
+        <div class="card h-100">
             <div class="card-body">
                 <h6 class="card-title mb-1">
                     <a href="/groups/{{ g.id }}" class="text-decoration-none">{{ g.name }}</a>

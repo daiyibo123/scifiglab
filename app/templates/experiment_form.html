@@ -27,12 +27,12 @@
                     <div class="row g-3">
                         <!-- Name -->
                         <div class="col-md-8">
-                            <label for="name" class="form-label">实验名称 <span class="text-danger">*</span></label>
+                            <label for="name" class="form-label">实验名称 <span class="text-danger">*</span><i class="help-tip" data-tip="给实验起个有辨识度的名字，如「ResNet50-lr0.001」「BERT-base-epoch20」">?</i></label>
                             <input type="text" class="form-control" id="name" value="{{ experiment.name if experiment else '' }}" required>
                         </div>
                         <!-- Status -->
                         <div class="col-md-4">
-                            <label for="status" class="form-label">状态</label>
+                            <label for="status" class="form-label">状态<i class="help-tip" data-tip="记录实验当前的运行状态：运行中、已完成、失败等">?</i></label>
                             <select class="form-select" id="status">
                                 {% for key, label in status_labels.items() %}
                                 <option value="{{ key }}" {% if experiment and experiment.status == key %}selected{% endif %}>{{ label }}</option>
@@ -41,22 +41,22 @@
                         </div>
                         <!-- Tags -->
                         <div class="col-12">
-                            <label for="tags" class="form-label">标签 <small class="text-muted">（逗号分隔）</small></label>
+                            <label for="tags" class="form-label">标签 <small class="text-muted">(逗号分隔)</small><i class="help-tip" data-tip="给实验打标签方便筛选，如：baseline, ablation, final。多个标签用英文逗号分隔">?</i></label>
                             <input type="text" class="form-control" id="tags" value="{{ experiment.tags if experiment else '' }}" placeholder="tag1, tag2, tag3">
                         </div>
                         <!-- Description -->
                         <div class="col-12">
-                            <label for="description" class="form-label">实验描述</label>
+                            <label for="description" class="form-label">实验描述<i class="help-tip" data-tip="简要描述本次实验的目的、方法或特殊设置，方便以后回顾">?</i></label>
                             <textarea class="form-control" id="description" rows="3">{{ experiment.description if experiment else '' }}</textarea>
                         </div>
                         <!-- Times -->
                         <div class="col-md-6">
-                            <label for="started_at" class="form-label">开始时间</label>
+                            <label for="started_at" class="form-label">开始时间<i class="help-tip" data-tip="实验开始运行的时间，用于计算实验时长">?</i></label>
                             <input type="datetime-local" class="form-control" id="started_at"
                                    value="{{ experiment.started_at.strftime('%Y-%m-%dT%H:%M') if experiment and experiment.started_at else '' }}">
                         </div>
                         <div class="col-md-6">
-                            <label for="ended_at" class="form-label">结束时间</label>
+                            <label for="ended_at" class="form-label">结束时间<i class="help-tip" data-tip="实验结束的时间，开始和结束时间都填写后会自动显示运行时长">?</i></label>
                             <input type="datetime-local" class="form-control" id="ended_at"
                                    value="{{ experiment.ended_at.strftime('%Y-%m-%dT%H:%M') if experiment and experiment.ended_at else '' }}">
                         </div>
@@ -64,31 +64,30 @@
                         <div class="col-12">
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="is_best" {% if experiment and experiment.is_best %}checked{% endif %}>
-                                <label class="form-check-label" for="is_best"><i class="bi bi-star-fill text-warning"></i> 最优实验</label>
+                                <label class="form-check-label" for="is_best"><i class="bi bi-star-fill text-warning"></i> 最优实验<i class="help-tip" data-tip="标记这个实验为最优结果，在项目列表中会特殊显示">?</i></label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="is_paper_used" {% if experiment and experiment.is_paper_used %}checked{% endif %}>
-                                <label class="form-check-label" for="is_paper_used"><i class="bi bi-journal-check text-info"></i> 论文采用</label>
+                                <label class="form-check-label" for="is_paper_used"><i class="bi bi-journal-check text-info"></i> 论文采用<i class="help-tip" data-tip="标记这个实验的结果已用于论文中，方便筛选和导出">?</i></label>
                             </div>
                             {% if experiment %}
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="is_archived" {% if experiment.is_archived %}checked{% endif %}>
-                                <label class="form-check-label" for="is_archived"><i class="bi bi-archive"></i> 归档</label>
+                                <label class="form-check-label" for="is_archived"><i class="bi bi-archive"></i> 归档<i class="help-tip" data-tip="归档后实验会被隐藏，不会出现在默认列表中，但数据不会删除">?</i></label>
                             </div>
                             {% endif %}
                         </div>
                         <!-- Note -->
                         <div class="col-12">
-                            <label for="note" class="form-label">备注</label>
+                            <label for="note" class="form-label">备注<i class="help-tip" data-tip="记录任何额外信息，如实验环境、GPU 型号、特殊设置等">?</i></label>
                             <textarea class="form-control" id="note" rows="2">{{ experiment.note if experiment else '' }}</textarea>
                         </div>
                         <!-- Metadata JSON -->
                         <div class="col-12">
                             <label for="metadata_json" class="form-label">
-                                自定义参数 (JSON)
-                                <small class="text-muted">例：{"model_name":"Restormer","learning_rate":0.0002}</small>
+                                <i class="bi bi-sliders2 me-1"></i>实验超参数 (JSON)<i class="help-tip" data-tip="记录本次实验的关键参数（模型名、学习率、batch_size 等），对比实验时可以看到参数差异。格式为 JSON，如 {&quot;lr&quot;:0.001}">?</i>
                             </label>
-                            <textarea class="form-control font-monospace" id="metadata_json" rows="6" spellcheck="false">{{ experiment.metadata_json if experiment and experiment.metadata_json else '{}' }}</textarea>
+                            <textarea class="form-control font-monospace" id="metadata_json" rows="6" spellcheck="false" placeholder='{"model": "模型名", "lr": 0.001, "batch_size": 32}'>{{ experiment.metadata_json if experiment and experiment.metadata_json else '{}' }}</textarea>
                             <div id="jsonError" class="invalid-feedback">JSON 格式不正确</div>
                         </div>
                     </div>
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var metaRaw = metaField.value.trim() || '{}';
         try { JSON.parse(metaRaw); } catch(err) {
-            showAlert('自定义参数 JSON 格式不正确', 'danger');
+            showAlert('实验超参数 JSON 格式不正确，请检查花括号和引号', 'danger');
             metaField.classList.add('is-invalid');
             return;
         }

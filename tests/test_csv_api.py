@@ -15,15 +15,23 @@ print('exp:', eid)
 # ── 1. Standard epoch CSV ──
 csv1 = b'epoch,train_loss,val_loss,psnr,ssim\n1,0.18,0.15,24.3,0.81\n2,0.15,0.13,25.0,0.83\n3,0.12,0.11,26.5,0.86\n'
 r = s.post(B + '/api/experiments/' + str(eid) + '/upload', files={'file': ('metrics.csv', csv1, 'text/csv')})
-fid = r.json()['file']['id']
+upload_resp = r.json()
+fid = upload_resp['file']['id']
 print('file:', fid)
+
+# Auto-import may have already imported on upload
+auto_imported = 0
+if upload_resp.get('parse_summary') and upload_resp['parse_summary'].get('imported'):
+    auto_imported = upload_resp['parse_summary']['imported']
+    print('auto-imported on upload:', auto_imported)
 
 r = s.post(B + '/api/experiments/' + str(eid) + '/import-csv', json={'file_id': fid, 'overwrite': False})
 d = r.json()
 print('import:', d['ok'], d['imported_records_count'], 'records')
 print('names:', d['metric_names'])
 print('epoch:', d['epoch_min'], '-', d['epoch_max'])
-assert d['imported_records_count'] == 12  # 4 metrics x 3 rows
+total = d['imported_records_count'] + auto_imported
+assert total == 12  # 4 metrics x 3 rows (auto-import + manual import = 12)
 
 # ── 2. Dedup (no overwrite) ──
 r = s.post(B + '/api/experiments/' + str(eid) + '/import-csv', json={'file_id': fid, 'overwrite': False})

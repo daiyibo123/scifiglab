@@ -1,5 +1,5 @@
 /**
- * ResearchExpHub — ECharts helper utilities
+ * SciFigLab — ECharts helper utilities
  */
 
 var DEFAULT_COLORS = [
@@ -86,6 +86,24 @@ function renderMetricsChart(domId, data, showBest, chartType) {
             seriesItem.step = 'middle';
             seriesItem.symbol = 'none';
             seriesItem.lineStyle = { color: color, width: 2 };
+        } else if (chartType === 'smooth') {
+            seriesItem.type = 'line';
+            seriesItem.smooth = true;
+            seriesItem.symbol = 'circle';
+            seriesItem.symbolSize = 3;
+            seriesItem.lineStyle = { color: color, width: 2.5 };
+        } else if (chartType === 'dashed') {
+            seriesItem.type = 'line';
+            seriesItem.smooth = false;
+            seriesItem.symbol = 'diamond';
+            seriesItem.symbolSize = 5;
+            seriesItem.lineStyle = { color: color, width: 2, type: 'dashed' };
+        } else if (chartType === 'thick') {
+            seriesItem.type = 'line';
+            seriesItem.smooth = true;
+            seriesItem.symbol = 'none';
+            seriesItem.lineStyle = { color: color, width: 3.5 };
+            seriesItem.areaStyle = { opacity: 0.08 };
         } else {
             seriesItem.type = 'line';
             seriesItem.smooth = false;

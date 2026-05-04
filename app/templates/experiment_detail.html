@@ -11,37 +11,35 @@
 </nav>
 
 <!-- Header -->
-<div class="d-flex justify-content-between align-items-start mb-4">
+<div class="page-header">
     <div>
         <h2 class="mb-1">
             {{ experiment.name }}
-            {% if experiment.is_best %}<span class="badge bg-warning text-dark ms-2" title="最优实验"><i class="bi bi-star-fill"></i> 最优</span>{% endif %}
-            {% if experiment.is_paper_used %}<span class="badge bg-info ms-2" title="论文采用"><i class="bi bi-journal-check"></i> 论文采用</span>{% endif %}
-            {% if experiment.is_archived %}<span class="badge bg-secondary ms-2"><i class="bi bi-archive"></i> 已归档</span>{% endif %}
+            {% if experiment.is_best %}<span class="badge bg-warning bg-opacity-25 text-warning ms-2" style="font-size:.7rem"><i class="bi bi-star-fill"></i> 最优</span>{% endif %}
+            {% if experiment.is_paper_used %}<span class="badge bg-info bg-opacity-25 text-info ms-2" style="font-size:.7rem"><i class="bi bi-journal-check"></i> 论文</span>{% endif %}
+            {% if experiment.is_archived %}<span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" style="font-size:.7rem"><i class="bi bi-archive"></i> 归档</span>{% endif %}
         </h2>
-        <code class="me-2">{{ experiment.experiment_code }}</code>
-        <span class="badge bg-{{ status_colors.get(experiment.status, 'secondary') }}">{{ status_labels.get(experiment.status, experiment.status) }}</span>
+        <div class="d-flex align-items-center gap-2 mt-1">
+            <code>{{ experiment.experiment_code }}</code>
+            <span class="badge bg-{{ status_colors.get(experiment.status, 'secondary') }}">{{ status_labels.get(experiment.status, experiment.status) }}</span>
+        </div>
     </div>
-    <div class="btn-group">
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm {% if experiment.is_best %}btn-warning{% else %}btn-outline-warning{% endif %}" id="toggleBestBtn">
+            <i class="bi bi-star{% if experiment.is_best %}-fill{% endif %}"></i>
+            {% if experiment.is_best %}取消最优{% else %}标记最优{% endif %}
+        </button>
+        <button class="btn btn-sm {% if experiment.is_paper_used %}btn-info{% else %}btn-outline-info{% endif %}" id="togglePaperBtn">
+            <i class="bi bi-journal-check"></i>
+            {% if experiment.is_paper_used %}取消论文{% else %}标记论文{% endif %}
+        </button>
+        <button class="btn btn-sm {% if experiment.is_archived %}btn-secondary{% else %}btn-outline-secondary{% endif %}" id="toggleArchiveBtn">
+            <i class="bi bi-archive"></i>
+            {% if experiment.is_archived %}取消归档{% else %}归档{% endif %}
+        </button>
         <a href="/experiments/{{ experiment.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
         <button class="btn btn-outline-danger btn-sm" id="deleteExpBtn"><i class="bi bi-trash"></i> 删除</button>
     </div>
-</div>
-
-<!-- Quick actions -->
-<div class="mb-4">
-    <button class="btn btn-sm {% if experiment.is_best %}btn-warning{% else %}btn-outline-warning{% endif %}" id="toggleBestBtn">
-        <i class="bi bi-star{% if experiment.is_best %}-fill{% endif %}"></i>
-        {% if experiment.is_best %}取消最优{% else %}标记最优{% endif %}
-    </button>
-    <button class="btn btn-sm {% if experiment.is_paper_used %}btn-info{% else %}btn-outline-info{% endif %}" id="togglePaperBtn">
-        <i class="bi bi-journal-check"></i>
-        {% if experiment.is_paper_used %}取消论文采用{% else %}标记论文采用{% endif %}
-    </button>
-    <button class="btn btn-sm {% if experiment.is_archived %}btn-secondary{% else %}btn-outline-secondary{% endif %}" id="toggleArchiveBtn">
-        <i class="bi bi-archive"></i>
-        {% if experiment.is_archived %}取消归档{% else %}归档{% endif %}
-    </button>
 </div>
 
 <div class="row g-4">
@@ -103,9 +101,23 @@
 
     <!-- Right column: metadata + charts + files -->
     <div class="col-lg-5">
-        <!-- Metadata JSON -->
+        <!-- Files — prominent position -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white"><h5 class="mb-0">自定义参数</h5></div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-folder2 me-1"></i> 实验文件 <span class="text-muted" id="fileCount"></span></h5>
+                <a href="/experiments/{{ experiment.id }}/upload" class="btn btn-sm btn-primary"><i class="bi bi-cloud-arrow-up"></i> 上传文件</a>
+            </div>
+            <div class="card-body p-0" id="fileListWrap">
+                <div class="text-center py-4">
+                    <i class="bi bi-cloud-arrow-up text-muted" style="font-size:2rem;opacity:.4"></i>
+                    <p class="text-muted mt-1 mb-0" style="font-size:.85rem">加载中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hyperparameters -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-sliders2 me-1"></i> 实验超参数</h5></div>
             <div class="card-body">
                 {% if metadata %}
                 <table class="table table-sm table-borderless mb-0">
@@ -116,7 +128,7 @@
                     </tbody>
                 </table>
                 {% else %}
-                <p class="text-muted mb-0">暂无自定义参数。</p>
+                <p class="text-muted mb-0" style="font-size:.85rem">暂无超参数。可在编辑实验时以 JSON 格式添加，如：<code>{"model":"ResNet50","lr":0.001}</code></p>
                 {% endif %}
             </div>
         </div>
@@ -163,10 +175,13 @@
                             <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
                             <select id="chartTypeSelect" class="form-select form-select-sm">
                                 <option value="line" selected>折线图</option>
+                                <option value="smooth">平滑曲线</option>
                                 <option value="bar">柱状图</option>
                                 <option value="scatter">散点图</option>
                                 <option value="area">面积图</option>
                                 <option value="step">阶梯图</option>
+                                <option value="dashed">虚线图</option>
+                                <option value="thick">粗线+阴影</option>
                             </select>
                         </div>
                         <div class="col-6">
@@ -198,16 +213,6 @@
             </div>
         </div>
 
-        <!-- Files -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">文件 <span class="text-muted" id="fileCount"></span></h5>
-                <a href="/experiments/{{ experiment.id }}/upload" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload"></i> 上传</a>
-            </div>
-            <div class="card-body p-0" id="fileListWrap">
-                <p class="text-muted p-3 mb-0">加载中...</p>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -223,6 +228,22 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">数据预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">关闭</button>
             </div>
         </div>
     </div>
@@ -402,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // File list
-    var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',other:'bi-file-earmark'};
+    var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',data:'bi-database',other:'bi-file-earmark'};
     function humanSize(b) {
         if (b<1024) return b+' B';
         if (b<1024*1024) return (b/1024).toFixed(1)+' KB';
@@ -419,8 +440,9 @@ document.addEventListener('DOMContentLoaded', function() {
             wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无文件。</p>';
             return;
         }
-        var PARSABLE_EXTS = ['.log','.txt','.csv','.json'];
+        var PARSABLE_EXTS = ['.log','.txt','.csv','.tsv','.json'];
         var CONFIG_EXTS = ['.yaml','.yml','.json','.toml','.ini','.cfg','.conf'];
+        var PREVIEWABLE_EXTS = ['.csv','.tsv','.log','.txt','.json','.yaml','.yml'];
         var html = '<div class="list-group list-group-flush">';
         files.forEach(function(f) {
             var icon = TYPE_ICONS[f.file_type] || 'bi-file-earmark';
@@ -432,14 +454,18 @@ document.addEventListener('DOMContentLoaded', function() {
             html += ' <span class="badge bg-light text-dark ms-1">'+f.file_type_label+'</span>';
             html += ' <small class="text-muted ms-2">'+humanSize(f.file_size)+' · '+fmtDt(f.uploaded_at)+'</small></div>';
             html += '<div class="btn-group btn-group-sm">';
-            if (f.file_ext === '.csv') {
-                html += '<button class="btn btn-outline-primary btn-import-csv" data-id="'+f.id+'" data-name="'+f.original_name+'" title="导入 CSV 指标"><i class="bi bi-table"></i> 导入指标</button>';
+            var previewable = PREVIEWABLE_EXTS.indexOf(f.file_ext) >= 0;
+            if (previewable) {
+                html += '<button class="btn btn-outline-warning btn-preview" data-id="'+f.id+'" data-name="'+f.original_name+'" title="数据预览"><i class="bi bi-eye"></i></button>';
+            }
+            if (f.file_ext === '.csv' || f.file_ext === '.tsv') {
+                html += '<button class="btn btn-outline-primary btn-import-csv" data-id="'+f.id+'" data-name="'+f.original_name+'" title="导入指标"><i class="bi bi-table"></i></button>';
             }
             if (isConfig) {
-                html += '<button class="btn btn-outline-info btn-parse-config" data-id="'+f.id+'" data-name="'+f.original_name+'" title="解析配置文件"><i class="bi bi-gear"></i> 配置</button>';
+                html += '<button class="btn btn-outline-info btn-parse-config" data-id="'+f.id+'" data-name="'+f.original_name+'" title="解析配置"><i class="bi bi-gear"></i></button>';
             }
-            if (parsable) {
-                html += '<button class="btn btn-outline-success btn-parse" data-id="'+f.id+'" data-name="'+f.original_name+'" title="智能解析日志"><i class="bi bi-cpu"></i> 解析</button>';
+            if (parsable && f.file_ext !== '.csv' && f.file_ext !== '.tsv') {
+                html += '<button class="btn btn-outline-success btn-parse" data-id="'+f.id+'" data-name="'+f.original_name+'" title="解析日志"><i class="bi bi-cpu"></i></button>';
             }
             html += '<a class="btn btn-outline-secondary" href="/api/files/'+f.id+'/download" title="下载"><i class="bi bi-download"></i></a>';
             html += '<button class="btn btn-outline-danger btn-del-file" data-id="'+f.id+'" data-name="'+f.original_name+'"><i class="bi bi-trash"></i></button>';
@@ -515,6 +541,82 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultDiv.innerHTML = h;
                 } catch(e) {
                     resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>解析失败</small></div>';
+                }
+            });
+        });
+
+        // Preview handlers
+        document.querySelectorAll('.btn-preview').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                var fid = this.dataset.id;
+                var fname = this.dataset.name;
+                var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+                document.getElementById('previewModalLabel').textContent = '数据预览 — ' + fname;
+                var body = document.getElementById('previewModalBody');
+                body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">正在解析…</p></div>';
+                modal.show();
+                try {
+                    var resp = await fetch('/api/files/'+fid+'/parse-preview');
+                    var data = await resp.json();
+                    var h = '';
+                    h += '<div class="mb-3"><span class="badge bg-primary me-1">'+data.file_type+'</span>';
+                    h += '<small class="text-muted">'+data.detected_format+'</small></div>';
+                    if (data.warnings && data.warnings.length) {
+                        h += '<div class="alert alert-warning py-2 mb-2" style="font-size:.82rem"><i class="bi bi-exclamation-triangle me-1"></i>'+data.warnings.join('; ')+'</div>';
+                    }
+                    // Columns (for CSV/TSV)
+                    if (data.columns && data.columns.length) {
+                        h += '<h6 class="fw-bold mb-2"><i class="bi bi-layout-three-columns me-1"></i> 检测到 '+data.columns.length+' 列</h6>';
+                        h += '<div class="table-responsive mb-3" style="max-height:250px;overflow-y:auto"><table class="table table-sm table-bordered mb-0" style="font-size:.8rem">';
+                        h += '<thead class="table-light"><tr><th>列名</th><th>归一化</th><th>类型</th><th>示例值</th></tr></thead><tbody>';
+                        data.columns.forEach(function(c) {
+                            var typeBadge = c.is_axis ? '<span class="badge bg-info">横轴</span>' : (c.is_metric ? '<span class="badge bg-success">指标</span>' : '<span class="badge bg-secondary">文本</span>');
+                            h += '<tr><td><code>'+c.name+'</code></td><td><code>'+c.normalized+'</code></td><td>'+typeBadge+'</td>';
+                            h += '<td><small>'+c.sample_values.slice(0,3).join(', ')+'</small></td></tr>';
+                        });
+                        h += '</tbody></table></div>';
+                    }
+                    // Metric names
+                    if (data.metric_names && data.metric_names.length) {
+                        h += '<h6 class="fw-bold mb-2"><i class="bi bi-graph-up me-1"></i> 检测到 '+data.metric_names.length+' 个指标</h6>';
+                        h += '<div class="d-flex flex-wrap gap-1 mb-3">';
+                        data.metric_names.forEach(function(n) { h += '<span class="badge bg-success bg-opacity-25 text-success">'+n+'</span>'; });
+                        h += '</div>';
+                    }
+                    // Axis columns
+                    if (data.axis_columns && data.axis_columns.length) {
+                        h += '<div class="mb-3" style="font-size:.82rem"><strong>横轴列：</strong>';
+                        data.axis_columns.forEach(function(a) { h += '<span class="badge bg-info bg-opacity-25 text-info me-1">'+a+'</span>'; });
+                        h += '</div>';
+                    }
+                    // Config keys
+                    if (data.config_keys && data.config_keys.length) {
+                        h += '<h6 class="fw-bold mb-2"><i class="bi bi-gear me-1"></i> 配置参数 ('+data.config_keys.length+')</h6>';
+                        h += '<div class="d-flex flex-wrap gap-1 mb-3">';
+                        data.config_keys.forEach(function(k) { h += '<span class="badge bg-light text-dark border" style="font-size:.72rem">'+k+'</span>'; });
+                        h += '</div>';
+                    }
+                    // Sample rows
+                    if (data.sample_rows && data.sample_rows.length) {
+                        h += '<h6 class="fw-bold mb-2"><i class="bi bi-table me-1"></i> 样本数据</h6>';
+                        var keys = Object.keys(data.sample_rows[0]);
+                        h += '<div class="table-responsive" style="max-height:200px;overflow-y:auto"><table class="table table-sm table-bordered mb-0" style="font-size:.78rem">';
+                        h += '<thead class="table-light"><tr>';
+                        keys.forEach(function(k) { h += '<th>'+k+'</th>'; });
+                        h += '</tr></thead><tbody>';
+                        data.sample_rows.forEach(function(row) {
+                            h += '<tr>';
+                            keys.forEach(function(k) { h += '<td>'+(row[k] !== null && row[k] !== undefined ? row[k] : '-')+'</td>'; });
+                            h += '</tr>';
+                        });
+                        h += '</tbody></table></div>';
+                    }
+                    if (data.auto_importable) {
+                        h += '<div class="alert alert-success py-2 mt-3 mb-0" style="font-size:.82rem"><i class="bi bi-lightning me-1"></i> 该文件可自动导入指标数据（上传时已自动导入，或点击导入按钮手动导入）</div>';
+                    }
+                    body.innerHTML = h;
+                } catch(e) {
+                    body.innerHTML = '<div class="alert alert-danger">预览失败: '+e.message+'</div>';
                 }
             });
         });

@@ -2,9 +2,11 @@
 {% block title %}实验对比 — SciFigLab{% endblock %}
 
 {% block content %}
-<h2><i class="bi bi-bar-chart-line"></i> 实验对比</h2>
+<div class="page-header">
+    <h2><i class="bi bi-bar-chart-line"></i> 实验对比</h2>
+</div>
 
-<div class="row g-4 mt-2">
+<div class="row g-4">
     <!-- Left: controls -->
     <div class="col-lg-4">
         <div class="card shadow-sm mb-3">
@@ -65,10 +67,13 @@
                         <label class="form-label mb-0" style="font-size:0.8rem">图表类型</label>
                         <select id="chartTypeSelect" class="form-select form-select-sm">
                             <option value="line" selected>折线图</option>
+                            <option value="smooth">平滑曲线</option>
                             <option value="bar">柱状图</option>
                             <option value="scatter">散点图</option>
                             <option value="area">面积图</option>
                             <option value="step">阶梯图</option>
+                            <option value="dashed">虚线图</option>
+                            <option value="thick">粗线+阴影</option>
                         </select>
                     </div>
                     <div class="col-6">
@@ -219,6 +224,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 } else if (chartType === 'step') {
                     item.type = 'line'; item.step = 'middle'; item.symbol = 'none';
                     item.lineStyle = { color: color, width: 2 };
+                } else if (chartType === 'smooth') {
+                    item.type = 'line'; item.smooth = true;
+                    item.symbol = 'circle'; item.symbolSize = 3;
+                    item.lineStyle = { color: color, width: 2.5 };
+                } else if (chartType === 'dashed') {
+                    item.type = 'line'; item.smooth = false;
+                    item.symbol = 'diamond'; item.symbolSize = 5;
+                    item.lineStyle = { color: color, width: 2, type: 'dashed' };
+                } else if (chartType === 'thick') {
+                    item.type = 'line'; item.smooth = true; item.symbol = 'none';
+                    item.lineStyle = { color: color, width: 3.5 };
+                    item.areaStyle = { opacity: 0.08 };
                 } else {
                     item.type = 'line'; item.smooth = false;
                     item.symbol = s.marker || 'circle'; item.symbolSize = 4;

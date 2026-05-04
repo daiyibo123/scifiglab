@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% block title %}上传文件 — SciFigLab{% endblock %}
 
+{% block extra_head %}
+<style>
+.upload-dropzone{border:2px dashed var(--gray-200);border-radius:var(--radius);padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--gray-50)}
+.upload-dropzone:hover,.upload-dropzone.dragover{border-color:var(--primary);background:var(--primary-bg)}
+.upload-dropzone .drop-icon{font-size:2.5rem;color:var(--primary);opacity:.6;margin-bottom:.5rem}
+.upload-dropzone .drop-text{color:var(--gray-600);font-size:.9rem}
+.upload-dropzone .drop-hint{color:var(--gray-400);font-size:.78rem;margin-top:.25rem}
+.file-type-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:1rem;font-size:.72rem;font-weight:600}
+.ft-log{background:#fef3c7;color:#92400e}
+.ft-config{background:#dbeafe;color:#1e40af}
+.ft-metrics{background:#d1fae5;color:#065f46}
+.ft-image{background:#fce7f3;color:#9d174d}
+.ft-table{background:#e0e7ff;color:#3730a3}
+.ft-other{background:#f1f5f9;color:#475569}
+.ft-data{background:#fef9c3;color:#854d0e}
+.suggested-fmt{display:flex;align-items:flex-start;gap:.5rem;padding:.45rem .6rem;border-radius:8px;background:var(--gray-50);font-size:.82rem;margin-bottom:.35rem}
+.suggested-fmt .sf-label{font-weight:600;white-space:nowrap;min-width:72px}
+.suggested-fmt .sf-ext{color:var(--primary);font-family:var(--font-mono,monospace);font-size:.75rem}
+.suggested-fmt .sf-desc{color:var(--gray-500);font-size:.75rem}
+.parse-result{padding:.6rem .75rem;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-size:.82rem;margin-top:.5rem}
+.parse-result.warn{background:#fffbeb;border-color:#fde68a}
+</style>
+{% endblock %}
+
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -11,48 +35,84 @@
     </ol>
 </nav>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h3 class="card-title mb-3"><i class="bi bi-upload"></i> 上传文件</h3>
+<div class="page-header">
+    <h2><i class="bi bi-cloud-arrow-up"></i> 上传文件</h2>
+    <a href="/experiments/{{ experiment.id }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回实验</a>
+</div>
 
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
                 <div id="alertBox" class="d-none"></div>
 
                 <form id="uploadForm">
-                    <div class="mb-3">
-                        <label for="file" class="form-label">选择文件</label>
-                        <input type="file" class="form-control" id="file" name="file" required
-                               accept=".log,.txt,.csv,.json,.yaml,.yml,.png,.jpg,.jpeg,.xlsx,.pdf,.md">
-                        <div class="form-text">
-                            支持格式：日志(.log .txt)、指标(.csv)、配置(.yaml .yml .json)、图片(.png .jpg .jpeg)、表格(.csv .xlsx)、其他(.pdf .md)
-                            <br>大小限制：{{ max_size_mb }}MB
-                        </div>
+                    <div class="upload-dropzone" id="dropzone">
+                        <i class="bi bi-cloud-arrow-up drop-icon d-block"></i>
+                        <div class="drop-text">拖拽文件到此处，或 <strong class="text-primary">点击选择文件</strong></div>
+                        <div class="drop-hint">支持 CSV/TSV/日志/配置/图像/表格/科学数据等 30+ 种格式</div>
+                        <div class="drop-hint">大小限制：{{ max_size_mb }}MB · 自动加密存储 · CSV/日志会自动解析导入指标</div>
+                        <input type="file" class="d-none" id="file" name="file" required
+                               accept=".log,.txt,.csv,.tsv,.json,.yaml,.yml,.png,.jpg,.jpeg,.svg,.tif,.tiff,.xlsx,.pdf,.md,.npy,.npz,.hdf5,.h5,.mat,.nc,.fits,.parquet">
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" id="submitBtn">
-                            <i class="bi bi-upload"></i> 上传
-                        </button>
-                        <a href="/experiments/{{ experiment.id }}" class="btn btn-outline-secondary">返回实验</a>
+                    <div id="selectedFile" class="d-none mt-3 p-2 bg-light rounded d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-file-earmark me-1"></i> <strong id="selectedName"></strong></span>
+                        <button type="submit" class="btn btn-primary btn-sm" id="submitBtn"><i class="bi bi-upload"></i> 上传</button>
                     </div>
                 </form>
 
-                <!-- Progress -->
-                <div class="progress mt-3 d-none" id="progressWrap" style="height:24px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" role="progressbar" style="width:0%">0%</div>
+                <div class="progress mt-3 d-none" id="progressWrap" style="height:8px;border-radius:1rem">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" role="progressbar" style="width:0%"></div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Existing files -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">已上传文件 <span class="text-muted" id="fileCount"></span></h5>
-            </div>
-            <div class="card-body p-0" id="fileListWrap">
-                <p class="text-muted p-3 mb-0">加载中...</p>
+    <div class="col-lg-4">
+        <!-- Discipline-aware suggested formats -->
+        {% if suggested_formats %}
+        <div class="card mb-3">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-lightbulb me-1 text-warning"></i> 推荐格式 <small class="text-muted fw-normal">· {{ project.area_label }}</small></h5></div>
+            <div class="card-body py-2">
+                {% for fmt in suggested_formats %}
+                <div class="suggested-fmt">
+                    <span class="sf-label">{{ fmt.label }}</span>
+                    <div>
+                        <span class="sf-ext">{{ fmt.exts }}</span>
+                        <div class="sf-desc">{{ fmt.desc }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
+        {% endif %}
+
+        <!-- All supported types -->
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-info-circle me-1"></i> 支持的文件类型</h5></div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <span class="file-type-badge ft-log"><i class="bi bi-file-text"></i> 日志 .log .txt</span>
+                    <span class="file-type-badge ft-metrics"><i class="bi bi-file-spreadsheet"></i> 指标 .csv .tsv</span>
+                    <span class="file-type-badge ft-config"><i class="bi bi-file-code"></i> 配置 .yaml .json</span>
+                    <span class="file-type-badge ft-image"><i class="bi bi-file-image"></i> 图像 .png .jpg .svg .tif</span>
+                    <span class="file-type-badge ft-table"><i class="bi bi-file-earmark-spreadsheet"></i> 表格 .xlsx</span>
+                    <span class="file-type-badge ft-data"><i class="bi bi-database"></i> 数据 .npy .hdf5 .mat .nc .fits .parquet</span>
+                    <span class="file-type-badge ft-other"><i class="bi bi-file-earmark"></i> 其他 .pdf .md</span>
+                </div>
+                <p class="text-muted mb-0" style="font-size:.78rem"><i class="bi bi-shield-lock me-1"></i> 文件自动加密存储。CSV/TSV/日志文件会自动解析并导入指标数据。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Existing files -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-folder2 me-1"></i> 已上传文件 <span class="text-muted" id="fileCount"></span></h5>
+    </div>
+    <div class="card-body p-0" id="fileListWrap">
+        <div class="empty-state"><i class="bi bi-hourglass-split"></i><p>加载中...</p></div>
     </div>
 </div>
 {% endblock %}
@@ -61,7 +121,8 @@
 <script>
 var EXP_ID = {{ experiment.id }};
 
-var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',other:'bi-file-earmark'};
+var TYPE_ICONS = {log:'bi-file-text',config:'bi-file-code',metrics:'bi-file-spreadsheet',image:'bi-file-image',table:'bi-file-earmark-spreadsheet',data:'bi-database',other:'bi-file-earmark'};
+var TYPE_BADGE_CLS = {log:'ft-log',config:'ft-config',metrics:'ft-metrics',image:'ft-image',table:'ft-table',data:'ft-data',other:'ft-other'};
 
 function humanSize(b) {
     if (b < 1024) return b+' B';
@@ -76,19 +137,20 @@ async function loadFiles() {
     document.getElementById('fileCount').textContent = '('+files.length+')';
     var wrap = document.getElementById('fileListWrap');
     if (files.length === 0) {
-        wrap.innerHTML = '<p class="text-muted p-3 mb-0">暂无文件。</p>';
+        wrap.innerHTML = '<div class="empty-state"><i class="bi bi-folder-x"></i><p>暂无文件，请上传实验数据</p></div>';
         return;
     }
     var html = '<div class="table-responsive"><table class="table table-hover mb-0 align-middle"><thead class="table-light"><tr>';
     html += '<th>文件名</th><th>类型</th><th>大小</th><th>上传时间</th><th>操作</th></tr></thead><tbody>';
     files.forEach(function(f) {
         var icon = TYPE_ICONS[f.file_type] || 'bi-file-earmark';
+        var badgeCls = TYPE_BADGE_CLS[f.file_type] || 'ft-other';
         html += '<tr>';
-        html += '<td><i class="bi '+icon+' me-1"></i>'+f.original_name+'</td>';
-        html += '<td><span class="badge bg-light text-dark">'+f.file_type_label+'</span></td>';
-        html += '<td>'+humanSize(f.file_size)+'</td>';
-        html += '<td><small>'+fmtDt(f.uploaded_at)+'</small></td>';
-        html += '<td><button class="btn btn-outline-danger btn-sm btn-del-file" data-id="'+f.id+'" data-name="'+f.original_name+'"><i class="bi bi-trash"></i></button></td>';
+        html += '<td><i class="bi '+icon+' me-1"></i><strong>'+f.original_name+'</strong></td>';
+        html += '<td><span class="file-type-badge '+badgeCls+'">'+f.file_type_label+'</span></td>';
+        html += '<td><small>'+humanSize(f.file_size)+'</small></td>';
+        html += '<td><small class="text-muted">'+fmtDt(f.uploaded_at)+'</small></td>';
+        html += '<td><button class="btn btn-outline-danger btn-sm btn-del-file" data-id="'+f.id+'" data-name="'+f.original_name+'" title="删除"><i class="bi bi-trash"></i></button></td>';
         html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -109,20 +171,44 @@ document.addEventListener('DOMContentLoaded', function() {
     var submitBtn = document.getElementById('submitBtn');
     var progressWrap = document.getElementById('progressWrap');
     var progressBar = document.getElementById('progressBar');
+    var fileInput = document.getElementById('file');
+    var dropzone = document.getElementById('dropzone');
+    var selectedFile = document.getElementById('selectedFile');
+    var selectedName = document.getElementById('selectedName');
 
     function showAlert(msg, type) {
-        alertBox.className = 'alert alert-'+type;
-        alertBox.textContent = msg;
+        alertBox.className = 'alert alert-'+type+' alert-dismissible';
+        alertBox.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         alertBox.classList.remove('d-none');
     }
+
+    // Drag & drop
+    dropzone.addEventListener('click', function() { fileInput.click(); });
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length) {
+            selectedName.textContent = fileInput.files[0].name + ' (' + humanSize(fileInput.files[0].size) + ')';
+            selectedFile.classList.remove('d-none');
+            selectedFile.classList.add('d-flex');
+        }
+    });
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         alertBox.classList.add('d-none');
-        var fileInput = document.getElementById('file');
         if (!fileInput.files.length) return;
 
         submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 上传中…';
         progressWrap.classList.remove('d-none');
 
         var fd = new FormData();
@@ -135,32 +221,43 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ev.lengthComputable) {
                 var pct = Math.round(ev.loaded / ev.total * 100);
                 progressBar.style.width = pct+'%';
-                progressBar.textContent = pct+'%';
             }
         });
 
         xhr.addEventListener('load', function() {
             submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-upload"></i> 上传';
             progressWrap.classList.add('d-none');
             progressBar.style.width = '0%';
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (data.ok) {
-                    showAlert('上传成功: '+data.file.original_name, 'success');
+                    var extra = '';
+                    if (data.parse_summary && data.parse_summary.imported > 0) {
+                        extra = '<div class="parse-result mt-2"><i class="bi bi-lightning me-1"></i> 自动解析: 导入 <strong>'+data.parse_summary.imported+'</strong> 条指标记录';
+                        if (data.parse_summary.metric_names && data.parse_summary.metric_names.length) {
+                            extra += ' ('+data.parse_summary.metric_names.slice(0,5).join(', ')+')';
+                        }
+                        extra += '</div>';
+                    }
+                    showAlert('<i class="bi bi-check-circle me-1"></i> '+data.msg+extra, 'success');
                     fileInput.value = '';
+                    selectedFile.classList.add('d-none');
+                    selectedFile.classList.remove('d-flex');
                     loadFiles();
                 } else {
-                    showAlert(data.msg, 'danger');
+                    showAlert('<i class="bi bi-exclamation-triangle me-1"></i> '+data.msg, 'danger');
                 }
             } catch(err) {
-                showAlert('上传失败', 'danger');
+                showAlert('<i class="bi bi-x-circle me-1"></i> 上传失败', 'danger');
             }
         });
 
         xhr.addEventListener('error', function() {
             submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-upload"></i> 上传';
             progressWrap.classList.add('d-none');
-            showAlert('网络错误', 'danger');
+            showAlert('<i class="bi bi-wifi-off me-1"></i> 网络错误', 'danger');
         });
 
         xhr.send(fd);

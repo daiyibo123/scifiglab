@@ -17,6 +17,7 @@ from app.routers import (
     metrics,
     compare,
     groups,
+    diagrams,
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -46,6 +47,8 @@ app.include_router(compare.router)
 app.include_router(compare.api_router)
 app.include_router(groups.router)
 app.include_router(groups.api_router)
+app.include_router(diagrams.router)
+app.include_router(diagrams.api_router)
 app.include_router(admin.router)
 app.include_router(admin.api_router)
 

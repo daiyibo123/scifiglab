@@ -1,191 +1,427 @@
 {% extends "base.html" %}
 {% block title %}仪表盘 — SciFigLab{% endblock %}
 
+{% block extra_head %}
+<style>
+/* Hero banner */
+.dash-hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);border-radius:1rem;padding:2rem 2.5rem;color:#fff;position:relative;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 8px 32px rgba(102,126,234,.25)}
+.dash-hero::before{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);animation:heroFloat 6s ease-in-out infinite}
+.dash-hero::after{content:'';position:absolute;right:80px;bottom:-40px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);animation:heroFloat 8s ease-in-out infinite reverse}
+.dash-hero h1{font-size:1.65rem;font-weight:800;margin-bottom:.35rem}
+.dash-hero p{opacity:.9;font-size:.92rem;margin-bottom:1.2rem}
+.dash-hero .hero-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.dash-hero .hero-actions .btn{border-radius:2rem;font-weight:600;font-size:.85rem;padding:.45rem 1.3rem;backdrop-filter:blur(4px)}
+@keyframes heroFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-12px,10px) scale(1.05)}}
+
+/* Scroll reveal */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease-out,transform .6s ease-out}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.25s}
+.reveal-delay-4{transition-delay:.3s}
+
+/* Stagger children */
+.stagger-children > *{opacity:0;transform:translateY(20px);transition:opacity .5s ease-out,transform .5s ease-out}
+.stagger-children.visible > *:nth-child(1){transition-delay:.05s}
+.stagger-children.visible > *:nth-child(2){transition-delay:.1s}
+.stagger-children.visible > *:nth-child(3){transition-delay:.15s}
+.stagger-children.visible > *:nth-child(4){transition-delay:.2s}
+.stagger-children.visible > *:nth-child(5){transition-delay:.25s}
+.stagger-children.visible > *:nth-child(6){transition-delay:.3s}
+.stagger-children.visible > *:nth-child(7){transition-delay:.35s}
+.stagger-children.visible > *:nth-child(8){transition-delay:.4s}
+.stagger-children.visible > *:nth-child(9){transition-delay:.45s}
+.stagger-children.visible > *{opacity:1;transform:translateY(0)}
+
+/* Counter animation */
+.counter-val{display:inline-block;min-width:1ch}
+
+/* Quick actions grid */
+.qa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.qa-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:1.1rem .5rem;border-radius:1rem;background:#fff;border:1px solid #e2e8f0;cursor:pointer;text-decoration:none;color:var(--gray-600);transition:all .2s;text-align:center}
+.qa-item:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08);color:var(--gray-800)}
+.qa-item .qa-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:#fff}
+.qa-item .qa-label{font-size:.78rem;font-weight:600}
+
+/* Feature cards */
+.feature-card{border:none;border-radius:1rem;padding:1.5rem;background:#fff;border-left:4px solid;transition:all .2s;height:100%}
+.feature-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.feature-card .fc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff;margin-bottom:.75rem}
+.feature-card h6{font-weight:700;font-size:.9rem;margin-bottom:.35rem}
+.feature-card p{font-size:.8rem;color:#64748b;margin-bottom:.5rem;line-height:1.5}
+.feature-card .fc-steps{font-size:.74rem;color:#94a3b8;padding-left:1rem}
+.feature-card .fc-steps li{margin-bottom:.2rem}
+
+/* Stat mini cards */
+.mini-stat{background:#fff;border-radius:1rem;padding:1rem 1.2rem;display:flex;align-items:center;gap:1rem;border:1px solid #e2e8f0;transition:all .2s}
+.mini-stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.06);transform:translateY(-1px)}
+.mini-stat .ms-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#fff;flex-shrink:0}
+.mini-stat .ms-val{font-size:1.5rem;font-weight:800;line-height:1;color:#1e293b}
+.mini-stat .ms-lbl{font-size:.75rem;color:#94a3b8;margin-top:.1rem}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-speedometer2"></i> 仪表盘</h2>
-    <a href="/projects/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新建项目</a>
+<!-- Hero banner -->
+<div class="dash-hero reveal">
+    <h1>欢迎回来，{{ current_user.username }}</h1>
+    <p>科研实验数据管理与可视化平台 — 让你的研究更高效</p>
+    <div class="hero-actions">
+        <a href="/projects/new" class="btn btn-light"><i class="bi bi-plus-lg me-1"></i> 新建项目</a>
+        <a href="/projects" class="btn btn-outline-light"><i class="bi bi-folder2-open me-1"></i> 我的项目</a>
+        <a href="/diagrams/new" class="btn btn-outline-light"><i class="bi bi-diagram-3 me-1"></i> 绘制流程图</a>
+    </div>
 </div>
 
-<!-- Stats row 1 -->
-<div class="row g-3">
-    <div class="col-6 col-md-3">
-        <div class="card text-white bg-primary shadow-sm">
-            <div class="card-body py-3">
-                <h6 class="card-title mb-1"><i class="bi bi-folder"></i> 项目</h6>
-                <p class="display-6 mb-0">{{ project_count }}</p>
-            </div>
+<!-- Stat mini cards -->
+<div class="row g-3 mb-4 stagger-children" style="--bs-gutter-x:.75rem">
+    <div class="col-6 col-md-4 col-lg">
+        <div class="mini-stat">
+            <div class="ms-icon" style="background:linear-gradient(135deg,#6366f1,#a78bfa)"><i class="bi bi-folder2-open"></i></div>
+            <div><div class="ms-val">{{ project_count }}</div><div class="ms-lbl">项目</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-white bg-success shadow-sm">
-            <div class="card-body py-3">
-                <h6 class="card-title mb-1"><i class="bi bi-journal-text"></i> 实验</h6>
-                <p class="display-6 mb-0">{{ experiment_count }}</p>
-            </div>
+    <div class="col-6 col-md-4 col-lg">
+        <div class="mini-stat">
+            <div class="ms-icon" style="background:linear-gradient(135deg,#10b981,#6ee7b7)"><i class="bi bi-journal-code"></i></div>
+            <div><div class="ms-val">{{ experiment_count }}</div><div class="ms-lbl">实验</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-white bg-info shadow-sm">
-            <div class="card-body py-3">
-                <h6 class="card-title mb-1"><i class="bi bi-collection"></i> 实验组</h6>
-                <p class="display-6 mb-0">{{ group_count }}</p>
-            </div>
+    <div class="col-6 col-md-4 col-lg">
+        <div class="mini-stat">
+            <div class="ms-icon" style="background:linear-gradient(135deg,#3b82f6,#93c5fd)"><i class="bi bi-layers"></i></div>
+            <div><div class="ms-val">{{ group_count }}</div><div class="ms-lbl">实验组</div></div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-white bg-secondary shadow-sm">
-            <div class="card-body py-3">
-                <h6 class="card-title mb-1"><i class="bi bi-file-earmark"></i> 文件</h6>
-                <p class="display-6 mb-0">{{ file_count }}</p>
-            </div>
+    <div class="col-6 col-md-4 col-lg">
+        <div class="mini-stat">
+            <div class="ms-icon" style="background:linear-gradient(135deg,#f59e0b,#fcd34d)"><i class="bi bi-file-earmark-arrow-up"></i></div>
+            <div><div class="ms-val">{{ file_count }}</div><div class="ms-lbl">文件</div></div>
         </div>
     </div>
-</div>
-<!-- Stats row 2 -->
-<div class="row g-3 mt-1">
-    <div class="col-4">
-        <div class="card shadow-sm">
-            <div class="card-body py-2 text-center">
-                <small class="text-muted">指标记录</small>
-                <p class="h5 mb-0 text-primary">{{ metric_count }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-4">
-        <div class="card shadow-sm">
-            <div class="card-body py-2 text-center">
-                <small class="text-muted">运行中</small>
-                <p class="h5 mb-0 text-warning">{{ running_count }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-4">
-        <div class="card shadow-sm">
-            <div class="card-body py-2 text-center">
-                <small class="text-muted">最佳实验</small>
-                <p class="h5 mb-0 text-success">{{ best_count }}</p>
-            </div>
+    <div class="col-6 col-md-4 col-lg">
+        <div class="mini-stat">
+            <div class="ms-icon" style="background:linear-gradient(135deg,#06b6d4,#67e8f9)"><i class="bi bi-trophy"></i></div>
+            <div><div class="ms-val">{{ best_count }}</div><div class="ms-lbl">最佳实验</div></div>
         </div>
     </div>
 </div>
 
-<!-- Recent Projects -->
-<div class="card mt-4 shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">最近创建的项目</h5>
-        <a href="/projects" class="text-decoration-none">全部项目 &rarr;</a>
-    </div>
-    <div class="card-body p-0">
-        {% if recent_projects %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>项目名称</th>
-                        <th>研究领域</th>
-                        <th>实验数</th>
-                        <th>创建时间</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in recent_projects %}
-                    <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
-                        <td><strong>{{ p.name }}</strong></td>
-                        <td><span class="badge bg-secondary">{{ p.area_label }}</span></td>
-                        <td>{{ p.exp_count }}</td>
-                        <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted p-3 mb-0">暂无项目，点击右上角「新建项目」开始。</p>
-        {% endif %}
-    </div>
+<!-- Quick actions -->
+<h5 class="fw-bold mb-3 reveal" style="font-size:.95rem;color:#334155"><i class="bi bi-lightning-charge me-1 text-warning"></i> 快捷操作</h5>
+<div class="qa-grid stagger-children">
+    <a class="qa-item" href="/projects/new">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="bi bi-plus-lg"></i></div>
+        <span class="qa-label">新建项目</span>
+    </a>
+    <a class="qa-item" href="/projects">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#10b981,#34d399)"><i class="bi bi-folder2-open"></i></div>
+        <span class="qa-label">我的项目</span>
+    </a>
+    <a class="qa-item" href="/groups">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#3b82f6,#60a5fa)"><i class="bi bi-layers"></i></div>
+        <span class="qa-label">实验组</span>
+    </a>
+    <a class="qa-item" href="/compare">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)"><i class="bi bi-bar-chart-line"></i></div>
+        <span class="qa-label">对比分析</span>
+    </a>
+    <a class="qa-item" href="/groups" title="创建实验组后可导出论文表格">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#ec4899,#f472b6)"><i class="bi bi-table"></i></div>
+        <span class="qa-label">论文表格</span>
+    </a>
+    <a class="qa-item" href="/projects" title="在实验详情页上传文件">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)"><i class="bi bi-cloud-arrow-up"></i></div>
+        <span class="qa-label">上传数据</span>
+    </a>
+    <a class="qa-item" href="/projects" title="在实验详情查看图表">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#14b8a6,#5eead4)"><i class="bi bi-graph-up"></i></div>
+        <span class="qa-label">指标可视化</span>
+    </a>
+    <a class="qa-item" href="/projects" title="CSV/日志自动解析指标">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#06b6d4,#22d3ee)"><i class="bi bi-cpu"></i></div>
+        <span class="qa-label">智能解析</span>
+    </a>
+    <a class="qa-item" href="/diagrams/new" title="拖拽绘制流程图">
+        <div class="qa-icon" style="background:linear-gradient(135deg,#8b5cf6,#c084fc)"><i class="bi bi-diagram-3"></i></div>
+        <span class="qa-label">流程图</span>
+    </a>
 </div>
 
-<!-- Recently Updated -->
-<div class="card mt-4 shadow-sm">
-    <div class="card-header bg-white">
-        <h5 class="mb-0">最近更新的项目</h5>
-    </div>
-    <div class="card-body p-0">
-        {% if recently_updated %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>项目名称</th>
-                        <th>研究领域</th>
-                        <th>更新时间</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in recently_updated %}
-                    <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
-                        <td><strong>{{ p.name }}</strong></td>
-                        <td><span class="badge bg-secondary">{{ p.area_label }}</span></td>
-                        <td>{{ p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<!-- Data section: recent projects + experiments -->
+<div class="row g-4 mb-4 reveal">
+    <!-- Left: Projects -->
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-1 text-primary"></i> 最近项目</h5>
+                <a href="/projects" class="btn btn-sm btn-outline-primary" style="border-radius:2rem;font-size:.78rem">全部项目 <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_projects %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light"><tr><th>项目名称</th><th>领域</th><th>实验数</th><th>创建时间</th></tr></thead>
+                        <tbody>
+                        {% for p in recent_projects %}
+                        <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
+                            <td><strong>{{ p.name }}</strong></td>
+                            <td><span class="badge bg-light text-dark border">{{ p.area_label }}</span></td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ p.exp_count }}</span></td>
+                            <td><small class="text-muted">{{ p.created_at.strftime('%m-%d %H:%M') if p.created_at else '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state"><i class="bi bi-folder-plus"></i><p>暂无项目，点击「新建项目」开始你的研究</p></div>
+                {% endif %}
+            </div>
         </div>
-        {% else %}
-        <p class="text-muted p-3 mb-0">暂无数据。</p>
-        {% endif %}
-    </div>
-</div>
 
-<!-- Recent Experiments -->
-<div class="card mt-4 shadow-sm">
-    <div class="card-header bg-white">
-        <h5 class="mb-0">最近实验</h5>
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-arrow-repeat me-1 text-success"></i> 最近更新</h5></div>
+            <div class="card-body p-0">
+                {% if recently_updated %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light"><tr><th>项目名称</th><th>领域</th><th>更新时间</th></tr></thead>
+                        <tbody>
+                        {% for p in recently_updated %}
+                        <tr style="cursor:pointer" onclick="location.href='/projects/{{ p.id }}'">
+                            <td><strong>{{ p.name }}</strong></td>
+                            <td><span class="badge bg-light text-dark border">{{ p.area_label }}</span></td>
+                            <td><small class="text-muted">{{ p.updated_at.strftime('%m-%d %H:%M') if p.updated_at else '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state"><i class="bi bi-inbox"></i><p>暂无数据</p></div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    <div class="card-body p-0">
-        {% if recent_experiments %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>实验名称</th>
-                        <th>所属项目</th>
-                        <th>状态</th>
-                        <th>标记</th>
-                        <th>创建时间</th>
-                    </tr>
-                </thead>
-                <tbody>
+
+    <!-- Right: Recent experiments -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-journal-code me-1 text-info"></i> 最近实验</h5></div>
+            <div class="card-body p-0">
+                {% if recent_experiments %}
+                <div class="list-group list-group-flush">
                     {% for e in recent_experiments %}
-                    <tr style="cursor:pointer" onclick="location.href='/experiments/{{ e.id }}'">
-                        <td><strong>{{ e.name }}</strong> <code class="text-muted">{{ e.experiment_code }}</code></td>
-                        <td>{{ e.project_name }}</td>
-                        <td>
-                            {% if e.status == 'running' %}
-                            <span class="badge bg-warning text-dark">运行中</span>
-                            {% elif e.status == 'completed' %}
-                            <span class="badge bg-success">完成</span>
-                            {% elif e.status == 'failed' %}
-                            <span class="badge bg-danger">失败</span>
-                            {% else %}
-                            <span class="badge bg-secondary">{{ e.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if e.is_best %}<span class="badge bg-warning text-dark" title="最佳">★</span>{% endif %}
-                            {% if e.is_paper_used %}<span class="badge bg-info text-dark" title="论文使用">📄</span>{% endif %}
-                        </td>
-                        <td>{{ e.created_at.strftime('%Y-%m-%d %H:%M') if e.created_at else '-' }}</td>
-                    </tr>
+                    <a href="/experiments/{{ e.id }}" class="list-group-item list-group-item-action py-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold">{{ e.name }}</div>
+                                <small class="text-muted">{{ e.project_name }} &middot; <code style="background:none;padding:0;color:var(--gray-400)">{{ e.experiment_code }}</code></small>
+                            </div>
+                            <div class="text-end">
+                                {% if e.status == 'running' %}
+                                <span class="badge bg-warning text-dark">运行中</span>
+                                {% elif e.status == 'completed' %}
+                                <span class="badge bg-success">完成</span>
+                                {% elif e.status == 'failed' %}
+                                <span class="badge bg-danger">失败</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ e.status }}</span>
+                                {% endif %}
+                                <div class="mt-1">
+                                    {% if e.is_best %}<span class="badge bg-warning bg-opacity-25 text-warning" style="font-size:.65rem">★ 最优</span>{% endif %}
+                                    {% if e.is_paper_used %}<span class="badge bg-info bg-opacity-25 text-info" style="font-size:.65rem">论文</span>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted">{{ e.created_at.strftime('%Y-%m-%d %H:%M') if e.created_at else '' }}</small>
+                    </a>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+                {% else %}
+                <div class="empty-state"><i class="bi bi-journal-x"></i><p>暂无实验</p></div>
+                {% endif %}
+            </div>
         </div>
-        {% else %}
-        <p class="text-muted p-3 mb-0">暂无实验。</p>
-        {% endif %}
     </div>
 </div>
+
+<!-- Feature guide — only nav features -->
+<h5 class="fw-bold mb-3 reveal" style="font-size:.95rem;color:#334155"><i class="bi bi-book me-1 text-primary"></i> 功能指南 — 快速上手</h5>
+<div class="row g-3 mb-4 stagger-children">
+    <div class="col-md-3">
+        <div class="feature-card" style="border-left-color:#6366f1;box-shadow:var(--shadow-sm)">
+            <div class="fc-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="bi bi-folder2-open"></i></div>
+            <h6>项目管理</h6>
+            <p>创建项目、管理实验、上传数据文件、查看指标图表。</p>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="projects"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="feature-card" style="border-left-color:#3b82f6;box-shadow:var(--shadow-sm)">
+            <div class="fc-icon" style="background:linear-gradient(135deg,#3b82f6,#60a5fa)"><i class="bi bi-layers"></i></div>
+            <h6>实验组</h6>
+            <p>将多个实验归组，汇总指标，导出论文表格（Markdown/Word/CSV/LaTeX）。</p>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="groups"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="feature-card" style="border-left-color:#f59e0b;box-shadow:var(--shadow-sm)">
+            <div class="fc-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)"><i class="bi bi-bar-chart-line"></i></div>
+            <h6>对比分析</h6>
+            <p>选择多个实验对比指标曲线、参数差异，快速找到最优方案。</p>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="compare"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="feature-card" style="border-left-color:#8b5cf6;box-shadow:var(--shadow-sm)">
+            <div class="fc-icon" style="background:linear-gradient(135deg,#8b5cf6,#c084fc)"><i class="bi bi-diagram-3"></i></div>
+            <h6>流程图</h6>
+            <p>拖拽绘制流程图，一键美化布局，导出 SVG/PNG/PDF/Visio。</p>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="diagrams"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+        </div>
+    </div>
+</div>
+
+<!-- Guide detail modal -->
+<div class="modal fade" id="guideModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff">
+                <h5 class="modal-title" id="guideModalTitle"><i class="bi bi-book me-1"></i> 使用说明</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="guideModalBody" style="font-size:.88rem"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+var GUIDES = {
+    projects: {
+        title: '项目管理 — 详细使用说明',
+        html: '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-1-circle me-1"></i> 创建项目</h6>'
+            + '<p>点击侧边栏「项目管理」，再点击右上角「<strong>新建项目</strong>」按钮。</p>'
+            + '<ul><li>填写项目名称（如「XX 方向实验」「毕业论文实验」）</li><li>选择研究领域，系统会推荐适合的数据格式</li><li>填写简要描述（可选）</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-2-circle me-1"></i> 创建实验</h6>'
+            + '<p>进入项目后，点击「<strong>新建实验</strong>」。</p>'
+            + '<ul><li>填写实验名称，建议包含关键变量方便区分</li><li>设置状态：运行中 / 已完成 / 失败</li>'
+            + '<li><strong>超参数（JSON）</strong>：记录本次实验的关键参数，后续对比实验时可以直接看到参数差异</li>'
+            + '<li>打标签方便分组筛选，如 baseline、ablation、final</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-3-circle me-1"></i> 上传数据文件</h6>'
+            + '<p>在实验详情页点击「<strong>上传文件</strong>」。</p>'
+            + '<ul><li>支持 CSV、TSV、日志、JSON、YAML、图片、PDF 等 30+ 种格式</li>'
+            + '<li>CSV/TSV/日志文件上传后<strong>自动解析指标</strong>并导入</li>'
+            + '<li>点击文件旁的 <i class="bi bi-eye"></i> 按钮可预览解析到的列和数据</li>'
+            + '<li>点击 <i class="bi bi-table"></i> 按钮可手动重新导入指标</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-4-circle me-1"></i> 查看指标图表</h6>'
+            + '<p>导入指标后，在实验详情页下方自动显示曲线图。</p>'
+            + '<ul><li>勾选想要显示的指标名称</li><li>支持多种图表类型：折线图、柱状图、散点图、面积图、平滑曲线等</li>'
+            + '<li>支持多种导出格式：PNG、JPG、SVG 矢量图、PDF</li></ul></div>'
+    },
+    groups: {
+        title: '实验组 — 详细使用说明',
+        html: '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-1-circle me-1"></i> 创建实验组</h6>'
+            + '<p>点击侧边栏「实验组」，再点击「<strong>新建实验组</strong>」。</p>'
+            + '<ul><li>填写组名（如「方法对比」「参数消融」「不同条件」）</li><li>选择所属项目</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-2-circle me-1"></i> 添加实验到组</h6>'
+            + '<p>进入实验组后，点击「<strong>添加实验</strong>」，勾选要加入的实验。</p>'
+            + '<ul><li>可以添加同一项目下的多个实验</li><li>添加后可看到各实验的指标汇总</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-3-circle me-1"></i> 导出论文表格</h6>'
+            + '<p>点击「<strong>论文表格</strong>」按钮。</p>'
+            + '<ul><li>选择要展示的指标列</li>'
+            + '<li>自动<strong>加粗最优值</strong>，标记次优值</li>'
+            + '<li>支持导出为 <strong>Markdown、LaTeX、CSV、Word(.docx)</strong> 格式</li>'
+            + '<li>LaTeX 格式使用 booktabs 风格，可直接粘贴到论文中</li></ul></div>'
+    },
+    compare: {
+        title: '对比分析 — 详细使用说明',
+        html: '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-1-circle me-1"></i> 进入对比页面</h6>'
+            + '<p>点击侧边栏「<strong>对比分析</strong>」。</p></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-2-circle me-1"></i> 选择实验</h6>'
+            + '<ul><li>先选择一个项目</li><li>然后勾选该项目下要对比的多个实验（至少 2 个）</li><li>选择要对比的指标</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-3-circle me-1"></i> 查看对比结果</h6>'
+            + '<ul><li><strong>指标曲线对比</strong>：多条曲线叠加在一张图上，颜色区分</li>'
+            + '<li><strong>参数对比</strong>：以表格形式展示各实验参数差异，一目了然</li>'
+            + '<li>支持多种图表类型：折线、平滑、柱状、散点、面积、阶梯、虚线、粗线+阴影</li>'
+            + '<li>支持平滑窗口调节和横轴类型切换</li>'
+            + '<li>鼠标悬浮显示具体数值</li></ul></div>'
+    },
+    diagrams: {
+        title: '流程图 — 详细使用说明',
+        html: '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-1-circle me-1"></i> 新建流程图</h6>'
+            + '<p>点击侧边栏「<strong>流程图</strong>」，再点击「新建流程图」。</p>'
+            + '<ul><li>自动打开 draw.io 编辑器</li><li>从左侧面板拖拽各种形状到画布上</li><li>双击节点编辑文字内容</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-2-circle me-1"></i> 一键美化</h6>'
+            + '<ul><li>点击工具栏的「<strong>纵向</strong>」或「<strong>横向</strong>」按钮自动调整布局方向</li>'
+            + '<li>点击「<strong>美化</strong>」按钮自动优化节点间距和对齐</li>'
+            + '<li>选择不同<strong>配色方案</strong>快速切换整体风格</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-3-circle me-1"></i> 导出格式</h6>'
+            + '<ul><li><strong>SVG</strong> — 矢量图，论文首选，无限缩放不失真</li>'
+            + '<li><strong>PNG / JPEG</strong> — 通用图片格式</li>'
+            + '<li><strong>PDF</strong> — 直接嵌入 LaTeX 或 Word 论文</li>'
+            + '<li><strong>Visio (VSDX)</strong> — 兼容 Microsoft Visio 打开编辑</li>'
+            + '<li><strong>draw.io XML</strong> — 保存源文件，随时重新编辑</li>'
+            + '<li><strong>HTML</strong> — 网页展示，可交互查看</li></ul></div>'
+            + '<div class="mb-3"><h6 class="fw-bold text-primary"><i class="bi bi-4-circle me-1"></i> 保存与管理</h6>'
+            + '<ul><li>按 <kbd>Ctrl+S</kbd> 或点击「保存」按钮保存</li>'
+            + '<li>可关联到具体项目方便管理</li>'
+            + '<li>在流程图列表页查看所有已保存的流程图缩略图</li></ul></div>'
+    }
+};
+document.getElementById('guideModal').addEventListener('show.bs.modal', function(e) {
+    var key = e.relatedTarget.getAttribute('data-guide');
+    var g = GUIDES[key];
+    if (g) {
+        document.getElementById('guideModalTitle').innerHTML = '<i class="bi bi-book me-1"></i> ' + g.title;
+        document.getElementById('guideModalBody').innerHTML = g.html;
+    }
+});
+
+// ── Scroll reveal animation ──
+(function() {
+    var reveals = document.querySelectorAll('.reveal, .stagger-children');
+    function checkReveal() {
+        var wh = window.innerHeight;
+        reveals.forEach(function(el) {
+            var top = el.getBoundingClientRect().top;
+            if (top < wh - 60) el.classList.add('visible');
+        });
+    }
+    window.addEventListener('scroll', checkReveal, { passive: true });
+    checkReveal(); // initial check
+
+    // Counter animation for stat numbers
+    document.querySelectorAll('.ms-val').forEach(function(el) {
+        var target = parseInt(el.textContent);
+        if (isNaN(target) || target <= 0) return;
+        el.textContent = '0';
+        var start = 0;
+        var duration = 800;
+        var startTime = null;
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var progress = Math.min((ts - startTime) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            el.textContent = Math.round(eased * target);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        // Start counting when visible
+        var observer = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting) {
+                requestAnimationFrame(step);
+                observer.disconnect();
+            }
+        }, { threshold: 0.5 });
+        observer.observe(el);
+    });
+})();
+</script>
 {% endblock %}
