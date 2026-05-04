@@ -492,5 +492,5 @@ window.DIAGRAM_EDITOR_CONFIG = {
     initialTemplate: {{ initial_template|default('', true)|tojson }}
 };
 </script>
-<script src="{{ url_for('static', path='js/diagram_editor.js')?v=20260505-infinite-canvas-v2"></script>
+<script src="{{ url_for('static', path='js/diagram_editor.js') }}?v=20260505-infinite-canvas-v2"></script>
 {% endblock %}
