@@ -118,7 +118,7 @@ AI_PROVIDERS = [
             "nvidia/mistral-large-2-instruct", "nvidia/codellama-70b", 
             "nvidia/llama-3.3-nemotron-super-49b-v1", 
             "nvidia/llama-3.1-nemotron-ultra-253B-v1", 
-            "nvidia/deepseek-v4-pro"
+            "nvidia/deepseek-v4-pro", "gemma-4-31b-it"
         ],
         "auth_type": "api_key",
         "supports_oauth": False,
@@ -171,6 +171,19 @@ AI_PROVIDER_FLAG_KEYS = [
     "ai_provider_gemma_enabled",
 ]
 
+OAUTH_URLS = {
+    "openai": "https://api.openai.com/oauth/authorize",
+    "gemini": "https://accounts.google.com/o/oauth2/v2/auth",
+    "anthropic": "https://api.anthropic.com/oauth/authorize",
+    "zhipu": "https://open.bigmodel.cn/oauth2/authorize",
+}
+
+OAUTH_SCOPES = {
+    "openai": "offline_access model:read model:write",
+    "gemini": "https://www.googleapis.com/auth/generative-language",
+    "anthropic": "offline model:read model:write",
+    "zhipu": "all",
+}
 
 # ── Helper: check if admin exists ────────────────────────────────────────
 
@@ -439,28 +452,16 @@ def api_ai_oauth_start(
         )
 
     from urllib.parse import urlencode
-    auth_urls = {
-        "openai": "https://auth.openai.com/oauth/authorize",
-        "gemini": "https://accounts.google.com/o/oauth2/v2/auth",
-        "anthropic": "https://console.anthropic.com/oauth/authorize",
-        "zhipu": "https://open.bigmodel.cn/usercenter/apikeys",
-    }
-    scopes = {
-        "openai": "openid profile email offline_access",
-        "gemini": "openid email profile https://www.googleapis.com/auth/generative-language",
-        "anthropic": "openid profile email offline_access",
-        "zhipu": "openid profile email offline_access",
-    }
     query = urlencode({
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": scopes[provider],
+        "scope": OAUTH_SCOPES[provider],
         "state": f"user:{current_user.id}:provider:{provider}",
         "access_type": "offline",
         "prompt": "consent",
     })
-    return RedirectResponse(url=f"{auth_urls[provider]}?{query}", status_code=302)
+    return RedirectResponse(url=f"{OAUTH_URLS[provider]}?{query}", status_code=302)
 
 
 @api_router.get("/api/admin/ai-config")
