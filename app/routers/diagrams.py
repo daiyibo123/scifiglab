@@ -264,12 +264,15 @@ def api_ai_plan(
     if not cfg:
         raise HTTPException(status_code=400, detail="请先在 AI 设置中配置并启用一个模型厂商")
 
-    plan = generate_diagram_plan(AIRequest(
-        provider=cfg.provider,
-        model=cfg.model,
-        prompt=req.prompt,
-        base_url=cfg.base_url,
-        api_key=decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
-        auth_type=cfg.auth_type,
-    ))
+    try:
+        plan = generate_diagram_plan(AIRequest(
+            provider=cfg.provider,
+            model=cfg.model,
+            prompt=req.prompt,
+            base_url=cfg.base_url,
+            api_key=decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
+            auth_type=cfg.auth_type,
+        ))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True, "plan": plan}

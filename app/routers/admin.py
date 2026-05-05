@@ -227,6 +227,7 @@ class AIConfigUpsertRequest(BaseModel):
     model: str = ""
     api_key: str = ""
     base_url: str = ""
+    request_model: Optional[str] = None
     is_enabled: bool = True
 
 

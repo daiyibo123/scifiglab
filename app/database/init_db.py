@@ -23,6 +23,8 @@ def init_db():
     # Lightweight migrations for columns added after initial schema
     with engine.connect() as conn:
         _add_column_if_missing(conn, "users", "is_admin", "BOOLEAN", "0")
+        _add_column_if_missing(conn, "users", "role", "VARCHAR(32)", "'user'")
+        _add_column_if_missing(conn, "users", "is_email_verified", "BOOLEAN", "0")
         conn.commit()
 
 

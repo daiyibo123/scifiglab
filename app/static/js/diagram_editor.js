@@ -1144,7 +1144,7 @@
                         wrap.scrollLeft = Math.max(0, cx * zoom - wrap.clientWidth / 2);
                         wrap.scrollTop = Math.max(0, cy * zoom - wrap.clientHeight / 2);
                     }
-                    setTimeout(addNextNode, 180);
+                    setTimeout(addNextNode, 200);
                 } else {
                     let edgeIndex = 0;
                     function addNextEdge() {
@@ -1152,10 +1152,11 @@
                             state.local.edges.push(animEdges[edgeIndex]);
                             edgeIndex++;
                             render(false);
-                            setTimeout(addNextEdge, 100);
+                            setTimeout(addNextEdge, 120);
                         } else {
-                            autoLayout(state.layoutDirection || 'TB');
+                            updateCanvasSize();
                             render();
+                            fitCanvas();
                             resolve();
                         }
                     }
