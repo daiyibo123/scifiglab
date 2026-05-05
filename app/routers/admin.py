@@ -423,8 +423,8 @@ def api_update_user_role(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    if user.id == current_user.id and _normalize_role(req.role) != "admin":
-        raise HTTPException(status_code=400, detail="不能降低自己的管理员权限")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能修改自己的角色")
     role = _normalize_role(req.role)
     user.role = role
     user.is_admin = role == "admin"
