@@ -84,16 +84,36 @@ def send_verification_code(db: Session, email: str, purpose: str) -> Tuple[bool,
 
     # --- Send ---
     subject = f"【{settings.APP_NAME}】邮箱验证码"
-    body = f"""
-    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;">
-        <h2 style="color:#0d6efd;">{settings.APP_NAME}</h2>
-        <p>您的验证码为：</p>
-        <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#333;">{code}</p>
-        <p>验证码 {settings.EMAIL_CODE_EXPIRE_MINUTES} 分钟内有效，请尽快使用。</p>
-        <hr style="border:none;border-top:1px solid #eee;">
-        <p style="font-size:12px;color:#999;">如果您没有请求此验证码，请忽略此邮件。</p>
+    body = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>邮箱验证码</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:Arial, sans-serif;">
+  <div style="max-width:600px; margin:40px auto; background:#ffffff; padding:30px; border-radius:8px;">
+    <h2 style="color:#333333; margin-bottom:20px;">邮箱验证码</h2>
+    <p style="font-size:16px; color:#555555;">
+      您好，您正在进行账号注册，请使用以下验证码完成验证：
+    </p>
+    <div style="margin:30px 0; text-align:center;">
+      <span style="display:inline-block; font-size:32px; font-weight:bold; letter-spacing:6px; color:#2f80ed; background:#f0f6ff; padding:15px 30px; border-radius:6px;">
+        {code}
+      </span>
     </div>
-    """
+    <p style="font-size:14px; color:#666666;">
+      验证码有效期为 <strong>{settings.EMAIL_CODE_EXPIRE_MINUTES} 分钟</strong>，请勿将验证码泄露给他人。
+    </p>
+    <p style="font-size:14px; color:#999999; margin-top:30px;">
+      如果这不是您本人操作，请忽略此邮件。
+    </p>
+    <hr style="border:none; border-top:1px solid #eeeeee; margin:30px 0;" />
+    <p style="font-size:12px; color:#aaaaaa; text-align:center;">
+      本邮件由系统自动发送，请勿直接回复。
+    </p>
+  </div>
+</body>
+</html>"""
     ok = send_email(email, subject, body)
     if not ok:
         return False, "邮件发送失败，请检查邮箱地址或稍后重试"
