@@ -245,6 +245,7 @@
         $$('.shape-tool').forEach((tool) => {
             tool.addEventListener('dragstart', (event) => {
                 event.dataTransfer.setData('text/plain', tool.dataset.shape);
+                event.dataTransfer.setData('application/x-scifig-shape', tool.dataset.shape);
                 event.dataTransfer.effectAllowed = 'copy';
             });
             tool.addEventListener('click', () => {
@@ -268,7 +269,7 @@
         stageWrap.addEventListener('drop', (event) => {
             event.preventDefault();
             stageWrap.classList.remove('dragover');
-            const shape = event.dataTransfer.getData('text/plain');
+            const shape = event.dataTransfer.getData('application/x-scifig-shape') || event.dataTransfer.getData('text/plain');
             if (!shape) return;
             const point = clientToSvg(event);
             addNode(shape, point.x, point.y);
@@ -931,6 +932,70 @@
             }
             return grid;
         }
+        if (node.type === 'image') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<circle cx="' + (node.x + 26) + '" cy="' + (node.y + 22) + '" r="8" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<polyline points="' + (node.x + 12) + ',' + (node.y + node.height - 14) + ' ' + (node.x + node.width * 0.42) + ',' + (node.y + node.height * 0.52) + ' ' + (node.x + node.width * 0.58) + ',' + (node.y + node.height * 0.68) + ' ' + (node.x + node.width - 12) + ',' + (node.y + 26) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linejoin="round"></polyline>';
+        }
+        if (node.type === 'lane') {
+            const header = Math.min(42, node.width * 0.22);
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="4"></rect>' +
+                '<line x1="' + (node.x + header) + '" y1="' + node.y + '" x2="' + (node.x + header) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>';
+        }
+        if (node.type === 'semaphore') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 8;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<rect x="' + (cx - r * 0.52) + '" y="' + (cy - 4) + '" width="' + (r * 1.04) + '" height="8" rx="4" fill="' + escapeAttr(stroke) + '"></rect>';
+        }
+        if (node.type === 'event') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 8;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<path d="M' + (cx + 2) + ',' + (cy - r * 0.58) + ' L' + (cx - r * 0.25) + ',' + (cy + 2) + ' H' + (cx + 2) + ' L' + (cx - 2) + ',' + (cy + r * 0.58) + ' L' + (cx + r * 0.28) + ',' + (cy - 2) + ' H' + (cx - 2) + ' Z" fill="' + escapeAttr(stroke) + '"></path>';
+        }
+        if (node.type === 'stream') {
+            return '<path' + attrs + ' d="M' + (node.x + 12) + ',' + node.y + ' H' + (node.x + node.width - 12) + ' C' + (node.x + node.width + 10) + ',' + node.y + ' ' + (node.x + node.width + 10) + ',' + (node.y + node.height) + ' ' + (node.x + node.width - 12) + ',' + (node.y + node.height) + ' H' + (node.x + 12) + ' C' + (node.x - 10) + ',' + (node.y + node.height) + ' ' + (node.x - 10) + ',' + node.y + ' ' + (node.x + 12) + ',' + node.y + ' Z"></path>' +
+                '<path d="M' + (node.x + 18) + ',' + (node.y + node.height * 0.5) + ' H' + (node.x + node.width - 26) + ' M' + (node.x + node.width - 36) + ',' + (node.y + node.height * 0.34) + ' L' + (node.x + node.width - 22) + ',' + (node.y + node.height * 0.5) + ' L' + (node.x + node.width - 36) + ',' + (node.y + node.height * 0.66) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>';
+        }
+        if (node.type === 'batch') {
+            return '<rect' + attrs + ' x="' + (node.x + 12) + '" y="' + node.y + '" width="' + (node.width - 12) + '" height="' + (node.height - 12) + '" rx="6"></rect>' +
+                '<rect' + attrs + ' x="' + (node.x + 6) + '" y="' + (node.y + 6) + '" width="' + (node.width - 12) + '" height="' + (node.height - 12) + '" rx="6"></rect>' +
+                '<rect' + attrs + ' x="' + node.x + '" y="' + (node.y + 12) + '" width="' + (node.width - 12) + '" height="' + (node.height - 12) + '" rx="6"></rect>';
+        }
+        if (node.type === 'cron') {
+            const cx = node.x + node.width - 24;
+            const cy = node.y + 24;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="12" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<line x1="' + cx + '" y1="' + cy + '" x2="' + cx + '" y2="' + (cy - 7) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>' +
+                '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + 6) + '" y2="' + cy + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'gitBranch') {
+            const x1 = node.x + 28;
+            const x2 = node.x + node.width - 28;
+            const y1 = node.y + 18;
+            const y2 = node.y + node.height - 18;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<circle cx="' + x1 + '" cy="' + y1 + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<circle cx="' + x1 + '" cy="' + y2 + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<circle cx="' + x2 + '" cy="' + y2 + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<path d="M' + x1 + ',' + y1 + ' V' + y2 + ' H' + x2 + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></path>';
+        }
+        if (node.type === 'monitor') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<polyline points="' + (node.x + 12) + ',' + (node.y + node.height * 0.58) + ' ' + (node.x + node.width * 0.32) + ',' + (node.y + node.height * 0.58) + ' ' + (node.x + node.width * 0.42) + ',' + (node.y + node.height * 0.36) + ' ' + (node.x + node.width * 0.54) + ',' + (node.y + node.height * 0.72) + ' ' + (node.x + node.width * 0.66) + ',' + (node.y + node.height * 0.46) + ' ' + (node.x + node.width - 12) + ',' + (node.y + node.height * 0.46) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>';
+        }
+        if (node.type === 'log' || node.type === 'config') {
+            const fold = Math.min(18, node.width * 0.14);
+            const icon = node.type === 'config'
+                ? '<circle cx="' + (node.x + node.width - 24) + '" cy="' + (node.y + 26) + '" r="8" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle><circle cx="' + (node.x + node.width - 24) + '" cy="' + (node.y + 26) + '" r="2.5" fill="' + escapeAttr(stroke) + '"></circle>'
+                : '<line x1="' + (node.x + 14) + '" y1="' + (node.y + 24) + '" x2="' + (node.x + node.width - 18) + '" y2="' + (node.y + 24) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line><line x1="' + (node.x + 14) + '" y1="' + (node.y + 38) + '" x2="' + (node.x + node.width * 0.7) + '" y2="' + (node.y + 38) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+            return '<path' + attrs + ' d="M' + node.x + ',' + node.y + ' H' + (node.x + node.width - fold) + ' L' + (node.x + node.width) + ',' + (node.y + fold) + ' V' + (node.y + node.height) + ' H' + node.x + ' Z"></path>' +
+                '<polyline points="' + (node.x + node.width - fold) + ',' + node.y + ' ' + (node.x + node.width - fold) + ',' + (node.y + fold) + ' ' + (node.x + node.width) + ',' + (node.y + fold) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></polyline>' + icon;
+        }
         const rx = node.type === 'terminator' ? Math.min(24, node.height / 2) : 8;
         return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="' + rx + '"></rect>';
     }
@@ -1375,12 +1440,13 @@
             if (plan.xml) {
                 setStatus('AI 已生成图表，正在模拟绘制…', 'ok');
                 await animateDrawioXml(plan.xml);
-                setStatus('AI 绘图完成，当前使用 ' + providerName + ' 配置。', 'ok');
+                setStatus('AI 绘图完成，当前使用 ' + providerName + ' / ' + (state.aiConfig.model || '默认模型') + ' 配置。', 'ok');
             } else {
                 const items = Array.isArray(plan.items) && plan.items.length ? plan.items : parsePromptSteps(prompt);
                 const direction = plan.direction || state.layoutDirection || 'TB';
                 replaceDiagramWithItems(items, direction, 'AI 草稿');
-                setStatus('已根据描述生成可编辑草稿，当前使用 ' + providerName + ' 配置。', 'ok');
+                fitCanvas();
+                setStatus('已根据描述生成可编辑草稿，当前使用 ' + providerName + ' / ' + (state.aiConfig.model || '默认模型') + ' 配置。', 'ok');
             }
         }).catch((err) => {
             setStatus('AI 生成失败：' + err.message, 'busy');
@@ -1538,6 +1604,7 @@
         selectNone();
         layoutGraph(state.layoutDirection);
         render();
+        fitCanvas();
         setStatus('已套用：' + (label || '模板'), 'ok');
     }
 
@@ -3130,6 +3197,12 @@
         if (type === 'fork' || type === 'join') return { width: 160, height: 40 };
         if (type === 'timer') return { width: 100, height: 100 };
         if (type === 'table') return { width: 180, height: 72 };
+        if (type === 'image') return { width: 180, height: 96 };
+        if (type === 'lane') return { width: 220, height: 100 };
+        if (type === 'semaphore' || type === 'event') return { width: 100, height: 100 };
+        if (type === 'stream') return { width: 180, height: 70 };
+        if (type === 'batch') return { width: 178, height: 82 };
+        if (type === 'cron' || type === 'gitBranch' || type === 'monitor' || type === 'log' || type === 'config') return { width: 178, height: 70 };
         return { width: 190, height: 62 };
     }
 
@@ -3213,7 +3286,18 @@
             fork: '并行分叉',
             join: '并行汇合',
             timer: '定时器',
-            table: '表格'
+            table: '表格',
+            image: '图片',
+            lane: '泳道',
+            semaphore: '信号量',
+            event: '事件',
+            stream: '数据流',
+            batch: '批处理',
+            cron: '定时任务',
+            gitBranch: 'Git 分支',
+            monitor: '监控',
+            log: '日志',
+            config: '配置'
         };
         return labels[type] || '步骤';
     }
