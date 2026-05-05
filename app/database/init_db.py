@@ -20,11 +20,24 @@ def _add_column_if_missing(conn, table: str, column: str, col_type: str, default
 def init_db():
     Base.metadata.create_all(bind=engine)
 
-    # Lightweight migrations for columns added after initial schema
     with engine.connect() as conn:
+        # ── users 表 ──
         _add_column_if_missing(conn, "users", "is_admin", "BOOLEAN", "0")
         _add_column_if_missing(conn, "users", "role", "VARCHAR(32)", "'user'")
         _add_column_if_missing(conn, "users", "is_email_verified", "BOOLEAN", "0")
+        _add_column_if_missing(conn, "users", "is_active", "BOOLEAN", "1")
+        _add_column_if_missing(conn, "users", "created_at", "DATETIME", "''")
+        _add_column_if_missing(conn, "users", "updated_at", "DATETIME", "''")
+        # ── site_config 表 ──
+        _add_column_if_missing(conn, "site_config", "description", "VARCHAR(256)", "''")
+        _add_column_if_missing(conn, "site_config", "updated_at", "DATETIME", "''")
+        # ── experiments 表 ──
+        _add_column_if_missing(conn, "experiments", "experiment_code", "VARCHAR(64)", "''")
+        _add_column_if_missing(conn, "experiments", "is_best", "BOOLEAN", "0")
+        _add_column_if_missing(conn, "experiments", "is_paper_used", "BOOLEAN", "0")
+        _add_column_if_missing(conn, "experiments", "is_archived", "BOOLEAN", "0")
+        _add_column_if_missing(conn, "experiments", "note", "TEXT", "''")
+        _add_column_if_missing(conn, "experiments", "metadata_json", "TEXT", "'{}'")
         conn.commit()
 
 

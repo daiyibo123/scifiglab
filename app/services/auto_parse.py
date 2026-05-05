@@ -368,8 +368,21 @@ def auto_import_after_upload(
         parser = LogParser()
         parse_result = parser.parse_text(text)
         if parse_result.records:
+            existing = set()
+            try:
+                rows = db.query(Metric.metric_name, Metric.epoch, Metric.step).filter(
+                    Metric.experiment_id == experiment_id,
+                    Metric.source_file_id == source_file_id,
+                ).all()
+                existing = {(r.metric_name, r.epoch, r.step) for r in rows}
+            except Exception:
+                pass
             inserted = 0
             for rec in parse_result.records:
+                key = (rec.metric_name, rec.epoch, rec.step)
+                if key in existing:
+                    continue
+                existing.add(key)
                 db.add(Metric(
                     user_id=user_id,
                     project_id=project_id,
@@ -385,6 +398,46 @@ def auto_import_after_upload(
             if inserted > 0:
                 summary = {
                     "type": "log_metrics",
+                    "imported": inserted,
+                    "metric_names": parse_result.metric_names,
+                    "warnings": parse_result.warnings,
+                }
+
+    # JSON / JSON Lines — parse and import
+    elif ext == ".json":
+        parser = LogParser()
+        parse_result = parser.parse_text(text)
+        if parse_result.records:
+            existing = set()
+            try:
+                rows = db.query(Metric.metric_name, Metric.epoch, Metric.step).filter(
+                    Metric.experiment_id == experiment_id,
+                    Metric.source_file_id == source_file_id,
+                ).all()
+                existing = {(r.metric_name, r.epoch, r.step) for r in rows}
+            except Exception:
+                pass
+            inserted = 0
+            for rec in parse_result.records:
+                key = (rec.metric_name, rec.epoch, rec.step)
+                if key in existing:
+                    continue
+                existing.add(key)
+                db.add(Metric(
+                    user_id=user_id,
+                    project_id=project_id,
+                    experiment_id=experiment_id,
+                    metric_name=rec.metric_name,
+                    metric_value=rec.metric_value,
+                    epoch=rec.epoch,
+                    step=rec.step,
+                    source_file_id=source_file_id,
+                ))
+                inserted += 1
+            db.commit()
+            if inserted > 0:
+                summary = {
+                    "type": "json_metrics",
                     "imported": inserted,
                     "metric_names": parse_result.metric_names,
                     "warnings": parse_result.warnings,

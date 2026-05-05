@@ -496,13 +496,14 @@
     function render(updateXml) {
         const shouldUpdateXml = updateXml !== false;
         updateCanvasSize();
+        const arrowColor = state.colors.stroke || '#475569';
         const defs = [
             '<defs>',
             '<marker id="arrowHead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">',
-            '<path d="M0,0 L0,6 L9,3 z" fill="#475569"></path>',
+            '<path d="M0,0 L0,6 L9,3 z" fill="' + escapeAttr(arrowColor) + '"></path>',
             '</marker>',
             '<marker id="arrowStart" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto" markerUnits="strokeWidth">',
-            '<path d="M9,0 L9,6 L0,3 z" fill="#475569"></path>',
+            '<path d="M9,0 L9,6 L0,3 z" fill="' + escapeAttr(arrowColor) + '"></path>',
             '</marker>',
             '</defs>'
         ].join('');
@@ -611,13 +612,37 @@
             return '<rect' + attrs + ' x="' + (node.x + 10) + '" y="' + node.y + '" width="' + (node.width - 10) + '" height="' + (node.height - 10) + '" rx="6"></rect>' +
                 '<rect' + attrs + ' x="' + node.x + '" y="' + (node.y + 10) + '" width="' + (node.width - 10) + '" height="' + (node.height - 10) + '" rx="6"></rect>';
         }
-        if (node.type === 'database' || node.type === 'storedData' || node.type === 'dataset' || node.type === 'cache') {
+        if (node.type === 'dataset') {
+            const ry = Math.min(16, node.height * 0.22);
+            const rows = 3;
+            let marks = '';
+            for (let i = 0; i < rows; i++) {
+                const y = node.y + 24 + i * 14;
+                marks += '<circle cx="' + (node.x + 20) + '" cy="' + y + '" r="3.5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                    '<line x1="' + (node.x + 32) + '" y1="' + y + '" x2="' + (node.x + node.width - 18) + '" y2="' + y + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5" stroke-linecap="round"></line>';
+            }
+            return '<path' + attrs + ' d="M' + node.x + ',' + (node.y + ry) + ' C' + node.x + ',' + (node.y - ry / 2) + ' ' + (node.x + node.width) + ',' + (node.y - ry / 2) + ' ' + (node.x + node.width) + ',' + (node.y + ry) +
+                ' V' + (node.y + node.height - ry) + ' C' + (node.x + node.width) + ',' + (node.y + node.height + ry / 2) + ' ' + node.x + ',' + (node.y + node.height + ry / 2) + ' ' + node.x + ',' + (node.y + node.height - ry) + ' Z"></path>' +
+                '<ellipse cx="' + (node.x + node.width / 2) + '" cy="' + (node.y + ry) + '" rx="' + (node.width / 2) + '" ry="' + ry + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></ellipse>' + marks;
+        }
+        if (node.type === 'cache') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="14"></rect>' +
+                '<path d="M' + (node.x + node.width * 0.52) + ',' + (node.y + 10) + ' L' + (node.x + node.width * 0.38) + ',' + (node.y + node.height * 0.5) + ' H' + (node.x + node.width * 0.54) + ' L' + (node.x + node.width * 0.44) + ',' + (node.y + node.height - 10) + ' L' + (node.x + node.width * 0.66) + ',' + (node.y + node.height * 0.38) + ' H' + (node.x + node.width * 0.5) + ' Z" fill="' + escapeAttr(stroke) + '"></path>';
+        }
+        if (node.type === 'database' || node.type === 'storedData') {
             const ry = Math.min(18, node.height * 0.24);
             return '<path' + attrs + ' d="M' + node.x + ',' + (node.y + ry) + ' C' + node.x + ',' + (node.y - ry / 2) + ' ' + (node.x + node.width) + ',' + (node.y - ry / 2) + ' ' + (node.x + node.width) + ',' + (node.y + ry) +
                 ' V' + (node.y + node.height - ry) + ' C' + (node.x + node.width) + ',' + (node.y + node.height + ry / 2) + ' ' + node.x + ',' + (node.y + node.height + ry / 2) + ' ' + node.x + ',' + (node.y + node.height - ry) + ' Z"></path>' +
                 '<ellipse cx="' + (node.x + node.width / 2) + '" cy="' + (node.y + ry) + '" rx="' + (node.width / 2) + '" ry="' + ry + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></ellipse>';
         }
-        if (node.type === 'internalStorage' || node.type === 'queue') {
+        if (node.type === 'queue') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<line x1="' + (node.x + 16) + '" y1="' + (node.y + 18) + '" x2="' + (node.x + node.width - 16) + '" y2="' + (node.y + 18) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>' +
+                '<line x1="' + (node.x + 16) + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + (node.x + node.width - 16) + '" y2="' + (node.y + node.height * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>' +
+                '<line x1="' + (node.x + 16) + '" y1="' + (node.y + node.height - 18) + '" x2="' + (node.x + node.width - 16) + '" y2="' + (node.y + node.height - 18) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>' +
+                '<path d="M' + (node.x + node.width - 28) + ',' + (node.y + node.height * 0.35) + ' L' + (node.x + node.width - 16) + ',' + (node.y + node.height * 0.5) + ' L' + (node.x + node.width - 28) + ',' + (node.y + node.height * 0.65) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>';
+        }
+        if (node.type === 'internalStorage') {
             return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="6"></rect>' +
                 '<line x1="' + (node.x + node.width * 0.22) + '" y1="' + node.y + '" x2="' + (node.x + node.width * 0.22) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
                 '<line x1="' + node.x + '" y1="' + (node.y + node.height * 0.28) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + node.height * 0.28) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>';
@@ -646,10 +671,38 @@
                 ' Q' + (node.x + node.width) + ',' + (node.y + node.height / 2) + ' ' + (node.x + node.width - 12) + ',' + (node.y + node.height) +
                 ' H' + (node.x + 18) + ' Q' + node.x + ',' + (node.y + node.height / 2) + ' ' + (node.x + 18) + ',' + node.y + ' Z"></path>';
         }
-        if (node.type === 'subroutine' || node.type === 'model' || node.type === 'code' || node.type === 'api' || node.type === 'service') {
+        if (node.type === 'subroutine') {
             return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
                 '<line x1="' + (node.x + 18) + '" y1="' + node.y + '" x2="' + (node.x + 18) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
                 '<line x1="' + (node.x + node.width - 18) + '" y1="' + node.y + '" x2="' + (node.x + node.width - 18) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>';
+        }
+        if (node.type === 'model') {
+            const cx = node.x + node.width - 28;
+            const cy = node.y + node.height / 2;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="10"></rect>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="13" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<circle cx="' + (cx - 22) + '" cy="' + (cy - 11) + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<circle cx="' + (cx - 22) + '" cy="' + (cy + 11) + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<line x1="' + (cx - 17) + '" y1="' + (cy - 11) + '" x2="' + (cx - 10) + '" y2="' + (cy - 5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.8"></line>' +
+                '<line x1="' + (cx - 17) + '" y1="' + (cy + 11) + '" x2="' + (cx - 10) + '" y2="' + (cy + 5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.8"></line>';
+        }
+        if (node.type === 'code') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + 22) + ',' + (node.y + node.height * 0.35) + ' L' + (node.x + 12) + ',' + (node.y + node.height * 0.5) + ' L' + (node.x + 22) + ',' + (node.y + node.height * 0.65) + ' M' + (node.x + node.width - 22) + ',' + (node.y + node.height * 0.35) + ' L' + (node.x + node.width - 12) + ',' + (node.y + node.height * 0.5) + ' L' + (node.x + node.width - 22) + ',' + (node.y + node.height * 0.65) + ' M' + (node.x + node.width - 42) + ',' + (node.y + 14) + ' L' + (node.x + node.width - 58) + ',' + (node.y + node.height - 14) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>';
+        }
+        if (node.type === 'api') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<circle cx="' + (node.x + 28) + '" cy="' + (node.y + node.height / 2) + '" r="8" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<circle cx="' + (node.x + node.width - 28) + '" cy="' + (node.y + node.height / 2) + '" r="8" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<line x1="' + (node.x + 36) + '" y1="' + (node.y + node.height / 2) + '" x2="' + (node.x + node.width - 36) + '" y2="' + (node.y + node.height / 2) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'service') {
+            const cx = node.x + node.width - 28;
+            const cy = node.y + node.height / 2;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="10"></rect>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="13" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<circle cx="' + (cx - 16) + '" cy="' + (cy - 14) + '" r="7" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>' +
+                '<circle cx="' + (cx - 16) + '" cy="' + (cy + 14) + '" r="7" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></circle>';
         }
         if (node.type === 'server') {
             return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
@@ -1479,7 +1532,10 @@
                     const h = Math.max(34, parseFloat(geo.getAttribute('height') || '60'));
                     parsedNodes.push({ id, type: typeFromStyle(style), label: cell.getAttribute('value') || '', x, y, width: w, height: h, fill: style.fillColor || state.colors.fill, stroke: style.strokeColor || state.colors.stroke, font: style.fontColor || state.colors.font });
                     nodeIds.add(id);
-                } else if (cell.getAttribute('edge') === '1') {
+                }
+            });
+            cells.forEach((cell) => {
+                if (cell.getAttribute('edge') === '1') {
                     const src = cell.getAttribute('source');
                     const tgt = cell.getAttribute('target');
                     if (nodeIds.has(src) && nodeIds.has(tgt)) {
@@ -3034,7 +3090,8 @@
         if (node.type === 'decision') return 'rhombus;' + base;
         if (node.type === 'data') return 'shape=parallelogram;perimeter=parallelogramPerimeter;' + base;
         if (node.type === 'note') return 'shape=note;' + base;
-        if (node.type === 'database' || node.type === 'storedData' || node.type === 'dataset' || node.type === 'cache') return 'shape=cylinder3d;' + base;
+        if (node.type === 'database' || node.type === 'storedData') return 'shape=cylinder3d;' + base;
+        if (node.type === 'dataset' || node.type === 'cache') return 'rounded=1;' + base;
         if (node.type === 'document' || node.type === 'paper' || node.type === 'multiDocument') return 'shape=document;' + base;
         if (node.type === 'preparation') return 'shape=hexagon;perimeter=hexagonPerimeter2;' + base;
         if (node.type === 'manualInput') return 'shape=manualInput;' + base;
@@ -3042,7 +3099,8 @@
         if (node.type === 'connector' || node.type === 'metric') return 'ellipse;whiteSpace=wrap;html=1;fillColor=' + node.fill + ';strokeColor=' + node.stroke + ';fontColor=' + node.font + ';scifigShape=' + node.type + ';';
         if (node.type === 'offpage') return 'shape=offPageConnector;' + base;
         if (node.type === 'display') return 'shape=display;' + base;
-        if (node.type === 'subroutine' || node.type === 'model' || node.type === 'code' || node.type === 'api' || node.type === 'service') return 'shape=process;' + base;
+        if (node.type === 'subroutine') return 'shape=process;' + base;
+        if (node.type === 'model' || node.type === 'code' || node.type === 'api' || node.type === 'service') return 'rounded=1;' + base;
         if (node.type === 'server' || node.type === 'web' || node.type === 'mobile' || node.type === 'message' || node.type === 'queue') return 'rounded=1;' + base;
         if (node.type === 'cloud') return 'ellipse;shape=cloud;' + base;
         if (node.type === 'text') return 'text;html=1;strokeColor=none;fillColor=none;fontColor=' + node.font + ';scifigShape=text;';
@@ -3079,15 +3137,22 @@
         if (style.rhombus === true || style.shape === 'rhombus') return 'decision';
         if (style.shape === 'parallelogram') return 'data';
         if (style.shape === 'note') return 'note';
-        if (style.shape === 'cylinder3d' || style.shape === 'cylinder') return 'database';
+        if (style.shape === 'cylinder3d' || style.shape === 'cylinder' || style.shape === 'cylinder3') return 'database';
         if (style.shape === 'document') return 'document';
         if (style.shape === 'hexagon') return 'preparation';
         if (style.shape === 'manualInput') return 'manualInput';
         if (style.shape === 'delay') return 'delay';
-        if (style.ellipse === true) return 'connector';
+        if (style.ellipse === true || style.shape === 'ellipse') return 'connector';
         if (style.shape === 'offPageConnector') return 'offpage';
         if (style.shape === 'display') return 'display';
         if (style.shape === 'cloud') return 'cloud';
+        if (style.shape === 'swimlane') return 'process';
+        if (style.shape === 'mxgraph.flowchart.database') return 'database';
+        if (style.shape === 'mxgraph.flowchart.terminator') return 'terminator';
+        if (style.shape === 'mxgraph.flowchart.process') return 'process';
+        if (style.shape === 'mxgraph.flowchart.decision') return 'decision';
+        if (style.shape === 'mxgraph.flowchart.document') return 'document';
+        if (style.shape === 'mxgraph.flowchart.predefined_process') return 'subroutine';
         if (style.shape === 'mxgraph.flowchart.merge' || style.shape === 'merge') return 'merge';
         if (style.shape === 'mxgraph.flowchart.extract' || style.shape === 'extract') return 'extract';
         if (style.shape === 'mxgraph.flowchart.sort' || style.shape === 'sort') return 'sort';

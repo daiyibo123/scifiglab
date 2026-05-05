@@ -136,6 +136,7 @@ def _call_anthropic(req: AIRequest, prompt: str) -> str:
         "model": req.model,
         "max_tokens": 8000,
         "temperature": 0.2,
+        "system": "你只输出 drawio XML，不要解释。不要用代码块包裹。直接输出 <?xml 开头的 XML。",
         "messages": [{"role": "user", "content": prompt}],
     }
     data = _http_json(url, payload, req.api_key, req.auth_type, anthropic=True)
@@ -150,7 +151,7 @@ def _call_gemini(req: AIRequest, prompt: str) -> str:
     else:
         url = f"{base_url}/models/{model}:generateContent?key={urllib.parse.quote(req.api_key)}"
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [{"parts": [{"text": "你只输出 drawio XML，不要解释。不要用代码块包裹。直接输出 <?xml 开头的 XML。\n\n" + prompt}]}],
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8000},
     }
     data = _http_json(url, payload, req.api_key, req.auth_type, gemini=True)
