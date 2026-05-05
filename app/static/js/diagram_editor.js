@@ -717,6 +717,229 @@
             return '<circle' + attrs + ' cx="' + cx + '" cy="' + (node.y + 22) + '" r="16"></circle>' +
                 '<path' + attrs + ' d="M' + (node.x + 20) + ',' + (node.y + node.height) + ' C' + (node.x + 28) + ',' + (node.y + 50) + ' ' + (node.x + node.width - 28) + ',' + (node.y + 50) + ' ' + (node.x + node.width - 20) + ',' + (node.y + node.height) + ' Z"></path>';
         }
+        if (node.type === 'training') {
+            const barW = 6;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<line x1="' + (node.x + node.width - 18) + '" y1="' + (node.y + 10) + '" x2="' + (node.x + node.width - 18) + '" y2="' + (node.y + node.height - 10) + '" stroke="' + escapeAttr(fill) + '" stroke-width="' + barW + '" stroke-linecap="round"></line>' +
+                '<line x1="' + (node.x + node.width - 30) + '" y1="' + (node.y + node.height * 0.4) + '" x2="' + (node.x + node.width - 30) + '" y2="' + (node.y + node.height - 10) + '" stroke="' + escapeAttr(fill) + '" stroke-width="' + barW + '" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'evaluation') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<rect x="' + (node.x + 10) + '" y="' + (node.y + 6) + '" width="' + (node.width - 20) + '" height="' + (node.height * 0.28) + '" rx="4" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></rect>' +
+                '<line x1="' + (node.x + 14) + '" y1="' + (node.y + node.height * 0.45) + '" x2="' + (node.x + node.width - 14) + '" y2="' + (node.y + node.height * 0.45) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>' +
+                '<line x1="' + (node.x + 14) + '" y1="' + (node.y + node.height * 0.62) + '" x2="' + (node.x + node.width * 0.6) + '" y2="' + (node.y + node.height * 0.62) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'experiment') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<circle cx="' + (node.x + 14) + '" cy="' + (node.y + node.height - 14) + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<circle cx="' + (node.x + 26) + '" cy="' + (node.y + node.height - 14) + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<circle cx="' + (node.x + 38) + '" cy="' + (node.y + node.height - 14) + '" r="5" fill="' + escapeAttr(stroke) + '"></circle>';
+        }
+        if (node.type === 'loss') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<polyline points="' + (node.x + 14) + ',' + (node.y + node.height * 0.3) + ' ' + (node.x + node.width * 0.5) + ',' + (node.y + node.height * 0.7) + ' ' + (node.x + node.width - 14) + ',' + (node.y + node.height * 0.35) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></polyline>';
+        }
+        if (node.type === 'optimizer') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<line x1="' + (node.x + 12) + '" y1="' + (node.y + node.height * 0.35) + '" x2="' + (node.x + node.width - 12) + '" y2="' + (node.y + node.height * 0.35) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>' +
+                '<circle cx="' + (node.x + node.width * 0.5) + '" cy="' + (node.y + node.height * 0.35) + '" r="4" fill="' + escapeAttr(stroke) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></circle>' +
+                '<line x1="' + (node.x + 12) + '" y1="' + (node.y + node.height * 0.65) + '" x2="' + (node.x + node.width - 12) + '" y2="' + (node.y + node.height * 0.65) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>' +
+                '<circle cx="' + (node.x + node.width * 0.3) + '" cy="' + (node.y + node.height * 0.65) + '" r="4" fill="' + escapeAttr(stroke) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></circle>';
+        }
+        if (node.type === 'augment') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + 12) + ',' + (node.y + node.height * 0.45) + ' A8,8 0 1 1 ' + (node.x + 12) + ',' + (node.y + node.height * 0.45 - 0.01) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></path>' +
+                '<line x1="' + (node.x + 12) + '" y1="' + (node.y + node.height * 0.3) + '" x2="' + (node.x + 12) + '" y2="' + (node.y + node.height * 0.45) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'inference' || node.type === 'prediction') {
+            const cx = node.x + node.width - 18;
+            const cy = node.y + node.height * 0.5;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<ellipse cx="' + cx + '" cy="' + cy + '" rx="8" ry="5" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></ellipse>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="2.5" fill="' + escapeAttr(stroke) + '"></circle>';
+        }
+        if (node.type === 'deployment') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + node.width - 26) + ',' + (node.y + 10) + ' L' + (node.x + node.width - 18) + ',' + (node.y + 4) + ' L' + (node.x + node.width - 10) + ',' + (node.y + 10) + ' M' + (node.x + node.width - 18) + ',' + (node.y + 4) + ' V' + (node.y + 16) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></path>';
+        }
+        if (node.type === 'embedding') {
+            const rows = 3;
+            let grid = '';
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < 4; c++) {
+                    grid += '<rect x="' + (node.x + 10 + c * 14) + '" y="' + (node.y + 10 + r * 14) + '" width="10" height="10" rx="2" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1"></rect>';
+                }
+            }
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' + grid;
+        }
+        if (node.type === 'backbone') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<line x1="' + (node.x + 14) + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + (node.x + node.width - 14) + '" y2="' + (node.y + node.height * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="3" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'attention') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + node.width / 2) + ',' + (node.y + 10) + ' L' + (node.x + node.width / 2 - 10) + ',' + (node.y + 22) + ' M' + (node.x + node.width / 2) + ',' + (node.y + 10) + ' L' + (node.x + node.width / 2 + 10) + ',' + (node.y + 22) + ' M' + (node.x + node.width / 2) + ',' + (node.y + 10) + ' V' + (node.y + node.height - 8) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></path>';
+        }
+        if (node.type === 'gateway') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<polyline points="' + (node.x + 12) + ',' + (node.y + node.height * 0.35) + ' ' + (node.x + node.width / 2) + ',' + (node.y + node.height * 0.5) + ' ' + (node.x + node.width - 12) + ',' + (node.y + node.height * 0.35) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></polyline>' +
+                '<line x1="' + (node.x + node.width / 2) + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + (node.x + node.width / 2) + '" y2="' + (node.y + node.height - 10) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'loadBalancer') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<line x1="' + (node.x + 12) + '" y1="' + cy + '" x2="' + (cx - 12) + '" y2="' + cy + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<line x1="' + (cx + 12) + '" y1="' + cy + '" x2="' + (node.x + node.width - 12) + '" y2="' + (node.y + 10) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<line x1="' + (cx + 12) + '" y1="' + cy + '" x2="' + (node.x + node.width - 12) + '" y2="' + (node.y + node.height - 10) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<circle cx="' + (cx - 12) + '" cy="' + cy + '" r="4" fill="' + escapeAttr(stroke) + '"></circle>';
+        }
+        if (node.type === 'firewall') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + node.width / 2) + ',' + (node.y + 8) + ' L' + (node.x + node.width - 14) + ',' + (node.y + node.height / 2) + ' L' + (node.x + node.width / 2) + ',' + (node.y + node.height - 8) + ' L' + (node.x + 14) + ',' + (node.y + node.height / 2) + ' Z" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></path>';
+        }
+        if (node.type === 'card') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="12"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + 18) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + 18) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'tape') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="4"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + node.height / 2) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + node.height / 2) + '" stroke="' + escapeAttr(stroke) + '" stroke-dasharray="4 3" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'class') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="0"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + node.height * 0.33) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + node.height * 0.33) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + node.height * 0.66) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + node.height * 0.66) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'interface') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="0"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + node.height * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'component') {
+            const tabW = 22;
+            const tabH = 10;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="6"></rect>' +
+                '<rect x="' + (node.x + 10) + '" y="' + (node.y - tabH) + '" width="' + tabW + '" height="' + tabH + '" rx="3" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></rect>' +
+                '<rect x="' + (node.x + node.width - 10 - tabW) + '" y="' + (node.y - tabH) + '" width="' + tabW + '" height="' + tabH + '" rx="3" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></rect>';
+        }
+        if (node.type === 'actor') {
+            const cx = node.x + node.width / 2;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + (node.y + 16) + '" r="12"></circle>' +
+                '<line x1="' + cx + '" y1="' + (node.y + 28) + '" x2="' + cx + '" y2="' + (node.y + 48) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<line x1="' + (node.x + 14) + '" y1="' + (node.y + 36) + '" x2="' + (node.x + node.width - 14) + '" y2="' + (node.y + 36) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<line x1="' + cx + '" y1="' + (node.y + 48) + '" x2="' + (node.x + 14) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>' +
+                '<line x1="' + cx + '" y1="' + (node.y + 48) + '" x2="' + (node.x + node.width - 14) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></line>';
+        }
+        if (node.type === 'usecase') {
+            const rx = node.width / 2;
+            const ry = node.height / 2;
+            return '<ellipse' + attrs + ' cx="' + (node.x + rx) + '" cy="' + (node.y + ry) + '" rx="' + rx + '" ry="' + ry + '"></ellipse>';
+        }
+        if (node.type === 'package') {
+            const tabH = 18;
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="4"></rect>' +
+                '<rect x="' + node.x + '" y="' + node.y + '" width="' + Math.min(60, node.width * 0.4) + '" height="' + tabH + '" rx="4" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + tabH) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + tabH) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'pipeline') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<polyline points="' + (node.x + 14) + ',' + (node.y + node.height * 0.35) + ' ' + (node.x + 28) + ',' + (node.y + node.height * 0.65) + ' ' + (node.x + 42) + ',' + (node.y + node.height * 0.35) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></polyline>' +
+                '<line x1="' + (node.x + 42) + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + (node.x + node.width - 14) + '" y2="' + (node.y + node.height * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'container' || node.type === 'docker') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="10"></rect>' +
+                '<line x1="' + node.x + '" y1="' + (node.y + 16) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + 16) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></line>';
+        }
+        if (node.type === 'function') {
+            return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="8"></rect>' +
+                '<path d="M' + (node.x + node.width - 20) + ',' + (node.y + 8) + ' L' + (node.x + node.width - 14) + ',' + (node.y + 16) + ' L' + (node.x + node.width - 8) + ',' + (node.y + 8) + '" fill="' + escapeAttr(stroke) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1.5"></path>';
+        }
+        if (node.type === 'warning' || node.type === 'alert') {
+            const cx = node.x + node.width / 2;
+            const top = node.y + 10;
+            const bottom = node.y + node.height - 8;
+            return '<path' + attrs + ' d="M' + cx + ',' + top + ' L' + (node.x + node.width - 14) + ',' + bottom + ' L' + (node.x + 14) + ',' + bottom + ' Z" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linejoin="round"></path>' +
+                '<line x1="' + cx + '" y1="' + (node.y + node.height * 0.5) + '" x2="' + cx + '" y2="' + (node.y + node.height * 0.68) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2.5" stroke-linecap="round"></line>' +
+                '<circle cx="' + cx + '" cy="' + (node.y + node.height * 0.76) + '" r="2" fill="' + escapeAttr(stroke) + '"></circle>';
+        }
+        if (node.type === 'error') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 8;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<line x1="' + (cx - r * 0.5) + '" y1="' + (cy - r * 0.5) + '" x2="' + (cx + r * 0.5) + '" y2="' + (cy + r * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2.5" stroke-linecap="round"></line>' +
+                '<line x1="' + (cx + r * 0.5) + '" y1="' + (cy - r * 0.5) + '" x2="' + (cx - r * 0.5) + '" y2="' + (cy + r * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2.5" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'success') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 8;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<polyline points="' + (cx - r * 0.35) + ',' + cy + ' ' + (cx - r * 0.1) + ',' + (cy + r * 0.35) + ' ' + (cx + r * 0.35) + ',' + (cy - r * 0.3) + '" fill="none" stroke="' + escapeAttr(stroke) + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>';
+        }
+        if (node.type === 'info') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 8;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<circle cx="' + cx + '" cy="' + (cy - r * 0.4) + '" r="2.5" fill="' + escapeAttr(stroke) + '"></circle>' +
+                '<line x1="' + cx + '" y1="' + (cy - r * 0.15) + '" x2="' + cx + '" y2="' + (cy + r * 0.5) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2.5" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'manualOperation') {
+            const bot = node.y + node.height;
+            const w = node.width;
+            return '<path' + attrs + ' d="M' + node.x + ',' + node.y + ' L' + (node.x + w) + ',' + node.y + ' L' + (node.x + w * 0.65) + ',' + bot + ' L' + (node.x + w * 0.35) + ',' + bot + ' Z"></path>';
+        }
+        if (node.type === 'merge') {
+            const top = node.y;
+            const bot = node.y + node.height;
+            const w = node.width;
+            return '<path' + attrs + ' d="M' + (node.x + w * 0.35) + ',' + top + ' L' + (node.x + w * 0.65) + ',' + top + ' L' + (node.x + w) + ',' + bot + ' L' + node.x + ',' + bot + ' Z"></path>';
+        }
+        if (node.type === 'extract') {
+            const top = node.y;
+            const bot = node.y + node.height;
+            const w = node.width;
+            return '<path' + attrs + ' d="M' + node.x + ',' + top + ' L' + (node.x + w) + ',' + top + ' L' + (node.x + w * 0.5) + ',' + bot + ' Z"></path>';
+        }
+        if (node.type === 'sort') {
+            const h = node.height;
+            const w = node.width;
+            return '<path' + attrs + ' d="M' + (node.x + w * 0.35) + ',' + node.y + ' L' + (node.x + w * 0.65) + ',' + node.y + ' L' + (node.x + w) + ',' + (node.y + h * 0.5) + ' L' + (node.x + w * 0.65) + ',' + (node.y + h) + ' L' + (node.x + w * 0.35) + ',' + (node.y + h) + ' L' + node.x + ',' + (node.y + h * 0.5) + ' Z"></path>';
+        }
+        if (node.type === 'collate') {
+            const w = node.width;
+            const h = node.height;
+            return '<path' + attrs + ' d="M' + node.x + ',' + node.y + ' H' + (node.x + w) + ' V' + (node.y + h * 0.5) + ' C' + (node.x + w) + ',' + (node.y + h) + ' ' + node.x + ',' + (node.y + h) + ' ' + node.x + ',' + (node.y + h * 0.5) + ' Z"></path>';
+        }
+        if (node.type === 'fork' || node.type === 'join') {
+            const h = node.height;
+            const w = node.width;
+            const barH = Math.min(12, h * 0.25);
+            return '<rect x="' + node.x + '" y="' + (node.y + h / 2 - barH / 2) + '" width="' + w + '" height="' + barH + '" rx="4" fill="' + escapeAttr(fill) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2"></rect>';
+        }
+        if (node.type === 'timer') {
+            const cx = node.x + node.width / 2;
+            const cy = node.y + node.height / 2;
+            const r = Math.min(node.width, node.height) / 2 - 6;
+            return '<circle' + attrs + ' cx="' + cx + '" cy="' + cy + '" r="' + r + '"></circle>' +
+                '<line x1="' + cx + '" y1="' + cy + '" x2="' + cx + '" y2="' + (cy - r * 0.6) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>' +
+                '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * 0.5) + '" y2="' + cy + '" stroke="' + escapeAttr(stroke) + '" stroke-width="2" stroke-linecap="round"></line>';
+        }
+        if (node.type === 'table') {
+            const cols = 3;
+            const rows = 2;
+            const cw = (node.width - 10) / cols;
+            const rh = (node.height - 10) / rows;
+            let grid = '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="4"></rect>';
+            for (let r = 1; r < rows; r++) {
+                grid += '<line x1="' + node.x + '" y1="' + (node.y + 5 + r * rh) + '" x2="' + (node.x + node.width) + '" y2="' + (node.y + 5 + r * rh) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1"></line>';
+            }
+            for (let c = 1; c < cols; c++) {
+                grid += '<line x1="' + (node.x + 5 + c * cw) + '" y1="' + node.y + '" x2="' + (node.x + 5 + c * cw) + '" y2="' + (node.y + node.height) + '" stroke="' + escapeAttr(stroke) + '" stroke-width="1"></line>';
+            }
+            return grid;
+        }
         const rx = node.type === 'terminator' ? Math.min(24, node.height / 2) : 8;
         return '<rect' + attrs + ' x="' + node.x + '" y="' + node.y + '" width="' + node.width + '" height="' + node.height + '" rx="' + rx + '"></rect>';
     }
@@ -2681,6 +2904,15 @@
         if (style.shape === 'offPageConnector') return 'offpage';
         if (style.shape === 'display') return 'display';
         if (style.shape === 'cloud') return 'cloud';
+        if (style.shape === 'mxgraph.flowchart.merge' || style.shape === 'merge') return 'merge';
+        if (style.shape === 'mxgraph.flowchart.extract' || style.shape === 'extract') return 'extract';
+        if (style.shape === 'mxgraph.flowchart.sort' || style.shape === 'sort') return 'sort';
+        if (style.shape === 'mxgraph.flowchart.collate' || style.shape === 'collate') return 'collate';
+        if (style.shape === 'mxgraph.flowchart.manual_operation' || style.shape === 'manualOperation') return 'manualOperation';
+        if (style.shape === 'trapezoid') return 'manualOperation';
+        if (style.shape === 'partialRectangle' || style.shape === 'tape') return 'tape';
+        if (style.shape === 'step') return 'process';
+        if (style.shape === 'mxgraph.arrows2.arrow') return 'process';
         if (style.text === true || style.shape === 'text') return 'text';
         if (style.rounded === '1' && (style.arcSize === '50' || style.arcSize === '40')) return 'terminator';
         return 'process';
@@ -2744,6 +2976,43 @@
         if (type === 'cloud') return { width: 160, height: 86 };
         if (type === 'person') return { width: 100, height: 92 };
         if (type === 'text') return { width: 150, height: 42 };
+        if (type === 'training') return { width: 170, height: 66 };
+        if (type === 'evaluation') return { width: 170, height: 70 };
+        if (type === 'experiment') return { width: 170, height: 66 };
+        if (type === 'loss') return { width: 170, height: 66 };
+        if (type === 'optimizer') return { width: 170, height: 66 };
+        if (type === 'augment') return { width: 170, height: 66 };
+        if (type === 'inference' || type === 'prediction') return { width: 170, height: 66 };
+        if (type === 'deployment') return { width: 170, height: 66 };
+        if (type === 'embedding') return { width: 170, height: 76 };
+        if (type === 'backbone') return { width: 170, height: 66 };
+        if (type === 'attention') return { width: 170, height: 66 };
+        if (type === 'gateway') return { width: 178, height: 70 };
+        if (type === 'loadBalancer') return { width: 178, height: 70 };
+        if (type === 'firewall') return { width: 178, height: 70 };
+        if (type === 'card') return { width: 180, height: 72 };
+        if (type === 'tape') return { width: 180, height: 62 };
+        if (type === 'class') return { width: 180, height: 72 };
+        if (type === 'interface') return { width: 180, height: 62 };
+        if (type === 'component') return { width: 180, height: 72 };
+        if (type === 'actor') return { width: 100, height: 120 };
+        if (type === 'usecase') return { width: 160, height: 90 };
+        if (type === 'package') return { width: 200, height: 72 };
+        if (type === 'pipeline') return { width: 178, height: 66 };
+        if (type === 'container' || type === 'docker') return { width: 178, height: 70 };
+        if (type === 'function') return { width: 170, height: 66 };
+        if (type === 'warning' || type === 'alert') return { width: 130, height: 90 };
+        if (type === 'error') return { width: 100, height: 100 };
+        if (type === 'success') return { width: 100, height: 100 };
+        if (type === 'info') return { width: 100, height: 100 };
+        if (type === 'manualOperation') return { width: 170, height: 66 };
+        if (type === 'merge') return { width: 170, height: 66 };
+        if (type === 'extract') return { width: 170, height: 80 };
+        if (type === 'sort') return { width: 160, height: 90 };
+        if (type === 'collate') return { width: 170, height: 70 };
+        if (type === 'fork' || type === 'join') return { width: 160, height: 40 };
+        if (type === 'timer') return { width: 100, height: 100 };
+        if (type === 'table') return { width: 180, height: 72 };
         return { width: 190, height: 62 };
     }
 
@@ -2786,7 +3055,48 @@
             tag: '标签',
             cloud: '云端服务',
             person: '角色',
-            text: '文本'
+            text: '文本',
+            training: '训练',
+            evaluation: '评估',
+            experiment: '实验',
+            loss: '损失函数',
+            optimizer: '优化器',
+            augment: '数据增强',
+            inference: '推理',
+            prediction: '预测',
+            deployment: '部署',
+            embedding: '特征表示',
+            backbone: '骨干网络',
+            attention: '注意力',
+            gateway: '网关',
+            loadBalancer: '负载均衡',
+            firewall: '防火墙',
+            card: '卡片',
+            tape: '纸带',
+            class: '类',
+            interface: '接口',
+            component: '组件',
+            actor: '参与者',
+            usecase: '用例',
+            package: '包',
+            pipeline: '流水线',
+            container: '容器',
+            docker: 'Docker',
+            function: '函数',
+            warning: '警告',
+            alert: '告警',
+            error: '错误',
+            success: '成功',
+            info: '信息',
+            manualOperation: '人工操作',
+            merge: '合并',
+            extract: '提取',
+            sort: '排序',
+            collate: '汇总',
+            fork: '并行分叉',
+            join: '并行汇合',
+            timer: '定时器',
+            table: '表格'
         };
         return labels[type] || '步骤';
     }
