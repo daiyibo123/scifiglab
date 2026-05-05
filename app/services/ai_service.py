@@ -100,10 +100,11 @@ def _call_provider(req: AIRequest, prompt: str) -> str:
 
 
 def _call_openai_compatible(req: AIRequest, prompt: str) -> str:
+    provider_local = (req.provider or "").lower().strip()
     base_url = (req.base_url or "").rstrip("/")
-    if not base_url and provider != "custom":
+    if not base_url and provider_local != "custom":
         base_url = "https://api.openai.com/v1"
-    if not base_url and provider == "custom":
+    if not base_url and provider_local == "custom":
         raise ValueError("自定义厂商必须填写 API 地址")
     url = base_url + "/chat/completions"
     payload = {

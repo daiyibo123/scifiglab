@@ -20,7 +20,10 @@ def encrypt_text(text: str) -> str:
 def decrypt_text(token: str) -> str:
     if not token:
         return ""
-    data = base64.urlsafe_b64decode(token.encode("ascii"))
-    key = _key()
-    out = bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
-    return out.decode("utf-8")
+    try:
+        data = base64.urlsafe_b64decode(token.encode("ascii"))
+        key = _key()
+        out = bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
+        return out.decode("utf-8")
+    except (UnicodeDecodeError, base64.binascii.Error, ValueError):
+        return ""

@@ -13,10 +13,17 @@
 .ai-config-row .provider-status{font-size:.76rem;padding:.2rem .55rem;border-radius:999px;font-weight:700}
 .ai-config-row .provider-status.on{background:#dcfce7;color:#16a34a}
 .ai-config-row .provider-status.off{background:#fee2e2;color:#ef4444}
+.ai-config-row .provider-actions{display:flex;gap:.35rem}
 .ai-form .form-label{font-size:.82rem;font-weight:700}
 .ai-form .form-text{font-size:.74rem}
 .ai-custom-fields{display:none;border-top:1px dashed var(--panel-border);margin-top:.75rem;padding-top:.75rem}
 .ai-custom-fields.show{display:block}
+.auth-link-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;cursor:pointer;transition:all .15s;text-decoration:none}
+.auth-link-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.3);color:#fff}
+.auth-link-btn i{font-size:.85rem}
+.api-key-wrap{position:relative}
+.api-key-wrap .paste-hint{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);font-size:.7rem;color:#94a3b8;pointer-events:none}
+.api-key-wrap input{padding-right:5rem}
 </style>
 {% endblock %}
 
@@ -29,7 +36,6 @@
         </div>
     </div>
 
-    <!-- Existing configs -->
     <div class="ai-card">
         <h5><i class="bi bi-list-check me-1"></i>已保存的配置</h5>
         <div id="configList">
@@ -37,21 +43,17 @@
         </div>
     </div>
 
-    <!-- Add / Edit form -->
     <div class="ai-card ai-form">
         <h5><i class="bi bi-plus-circle me-1"></i>新增配置</h5>
+        <div id="authStepHint" class="mb-3" style="display:none;font-size:.82rem;padding:.6rem .85rem;border-radius:.5rem;background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.04));border:1px solid rgba(99,102,241,.12)">
+            <i class="bi bi-info-circle me-1 text-primary"></i>
+            <span id="authStepText"></span>
+        </div>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">模型厂商</label>
                 <select id="aiProvider" class="form-select"></select>
                 <div class="form-text" id="aiProviderHint">请选择厂商</div>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">认证方式</label>
-                <select id="aiAuthType" class="form-select">
-                    <option value="api_key">API Key</option>
-                    <option value="oauth">OAuth</option>
-                </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label">模型名称</label>
@@ -61,11 +63,26 @@
                 <label class="form-label">Base URL</label>
                 <input id="aiBaseUrl" class="form-control" placeholder="自动填写，可修改">
             </div>
-            <div class="col-12">
-                <label class="form-label">API Key</label>
-                <input id="aiApiKey" class="form-control" type="password" placeholder="输入后保存到服务器">
+            <div class="col-md-6">
+                <label class="form-label">认证方式</label>
+                <select id="aiAuthType" class="form-select">
+                    <option value="api_key">API Key</option>
+                    <option value="oauth">OAuth</option>
+                </select>
             </div>
-            <!-- Custom provider extra fields -->
+            <div class="col-12">
+                <label class="form-label d-flex align-items-center gap-2">
+                    API Key
+                    <a id="getApiKeyBtn" class="auth-link-btn" href="#" target="_blank" rel="noopener" style="display:none">
+                        <i class="bi bi-box-arrow-up-right"></i> 获取 API Key
+                    </a>
+                </label>
+                <div class="api-key-wrap">
+                    <input id="aiApiKey" class="form-control" type="password" placeholder="点击上方「获取 API Key」去厂商网站创建密钥，然后粘贴到这里">
+                    <span class="paste-hint">粘贴回填</span>
+                </div>
+                <div class="form-text" id="apiKeyHint"></div>
+            </div>
             <div class="col-12">
                 <div class="ai-custom-fields" id="customFields">
                     <div class="row g-3">
@@ -109,6 +126,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var customFields = document.getElementById('customFields');
     var customCallModel = document.getElementById('customCallModel');
     var customReqModel = document.getElementById('customReqModel');
+    var getApiKeyBtn = document.getElementById('getApiKeyBtn');
+    var apiKeyHint = document.getElementById('apiKeyHint');
+    var authStepHint = document.getElementById('authStepHint');
+    var authStepText = document.getElementById('authStepText');
     var providerMeta = [];
 
     function isCustom() { return providerSelect.value === 'custom'; }
@@ -128,6 +149,9 @@ document.addEventListener('DOMContentLoaded', function() {
             baseUrlInput.placeholder = '输入自定义 API 地址';
             modelInput.placeholder = '输入模型名称';
             providerHint.textContent = '自定义厂商：填写 API 地址和模型名称';
+            getApiKeyBtn.style.display = 'none';
+            authStepHint.style.display = 'none';
+            apiKeyHint.textContent = '';
             return;
         }
         customFields.classList.remove('show');
@@ -143,6 +167,19 @@ document.addEventListener('DOMContentLoaded', function() {
         baseUrlInput.dataset.default = meta.default_base_url || '';
         modelInput.dataset.default = meta.default_model || '';
         providerHint.textContent = '推荐模型：' + (meta.default_model || '未设置') + '，默认接口：' + (meta.default_base_url || '未设置');
+
+        if (meta.auth_url) {
+            getApiKeyBtn.href = meta.auth_url;
+            getApiKeyBtn.style.display = 'inline-flex';
+            getApiKeyBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> 去 ' + meta.name + ' 获取 Key';
+            authStepText.innerHTML = '<strong>授权步骤：</strong>① 点击「去 ' + meta.name + ' 获取 Key」→ ② 在厂商网站登录并创建密钥 → ③ 复制密钥 → ④ 粘贴到下方 API Key 输入框 → ⑤ 保存';
+            authStepHint.style.display = 'block';
+            apiKeyHint.textContent = '密钥创建后复制粘贴即可，安全存储在服务器端';
+        } else {
+            getApiKeyBtn.style.display = 'none';
+            authStepHint.style.display = 'none';
+            apiKeyHint.textContent = '本地服务，无需 API Key';
+        }
     }
 
     function clearForm() {
@@ -182,10 +219,38 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (c.provider === 'custom') name = '自定义';
             return '<div class="ai-config-row">'
                 + '<span class="provider-name">' + name + '</span>'
-                + '<span class="provider-model">' + (c.model || '未设置') + ' &middot; ' + (c.base_url || '') + '</span>'
+                + '<span class="provider-model">' + (c.model || '未设置') + (c.has_api_key ? ' &middot; <i class="bi bi-key-fill text-success" title="已配置密钥"></i>' : ' &middot; <i class="bi bi-key text-warning" title="未配置密钥"></i>') + '</span>'
                 + '<span class="provider-status ' + (c.is_enabled ? 'on' : 'off') + '">' + (c.is_enabled ? '启用' : '禁用') + '</span>'
+                + '<div class="provider-actions">'
+                + '<button class="btn btn-sm btn-outline-primary btn-edit-config" data-provider="' + c.provider + '" style="font-size:.72rem;padding:.2rem .5rem"><i class="bi bi-pencil"></i></button>'
+                + '<button class="btn btn-sm btn-outline-danger btn-del-config" data-id="' + c.id + '" style="font-size:.72rem;padding:.2rem .5rem"><i class="bi bi-trash"></i></button>'
+                + '</div>'
                 + '</div>';
         }).join('');
+        configList.querySelectorAll('.btn-edit-config').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var provider = this.dataset.provider;
+                providerSelect.value = provider;
+                updateProviderDefaults();
+                var cfg = configs.find(function(c) { return c.provider === provider; });
+                if (cfg) {
+                    modelInput.value = cfg.model || '';
+                    baseUrlInput.value = cfg.base_url || '';
+                    apiKeyInput.value = cfg.api_key || '';
+                }
+            });
+        });
+        configList.querySelectorAll('.btn-del-config').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+                if (!confirm('确定删除此配置？')) return;
+                try {
+                    var resp = await fetch('/api/admin/ai-config/' + this.dataset.id, {method: 'DELETE'});
+                    var data = await resp.json();
+                    if (data.ok) loadConfigs();
+                    else alert(data.detail || '删除失败');
+                } catch(e) { alert('删除失败'); }
+            });
+        });
     }
 
     providerSelect.addEventListener('change', function() {

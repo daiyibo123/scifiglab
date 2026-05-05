@@ -31,13 +31,13 @@ router = APIRouter(tags=["admin"])
 api_router = APIRouter(tags=["admin-api"])
 
 AI_PROVIDERS = [
-    {"key": "openai", "name": "OpenAI", "default_base_url": "https://api.openai.com/v1", "default_model": "gpt-4.1-mini", "auth_types": ["api_key", "oauth"]},
-    {"key": "gemini", "name": "Gemini", "default_base_url": "https://generativelanguage.googleapis.com/v1beta", "default_model": "gemini-2.5-pro", "auth_types": ["api_key", "oauth"]},
-    {"key": "anthropic", "name": "Anthropic", "default_base_url": "https://api.anthropic.com/v1", "default_model": "claude-3-7-sonnet-latest", "auth_types": ["api_key"]},
-    {"key": "qwen", "name": "通义千问", "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "default_model": "qwen-plus", "auth_types": ["api_key"]},
-    {"key": "zhipu", "name": "智谱", "default_base_url": "https://open.bigmodel.cn/api/paas/v4", "default_model": "glm-4.5", "auth_types": ["api_key"]},
-    {"key": "deepseek", "name": "DeepSeek", "default_base_url": "https://api.deepseek.com/v1", "default_model": "deepseek-chat", "auth_types": ["api_key"]},
-    {"key": "ollama", "name": "Ollama", "default_base_url": "http://localhost:11434/v1", "default_model": "llama3.1", "auth_types": ["api_key"]},
+    {"key": "openai", "name": "OpenAI", "default_base_url": "https://api.openai.com/v1", "default_model": "gpt-4.1-mini", "auth_types": ["api_key", "oauth"], "auth_url": "https://platform.openai.com/api-keys"},
+    {"key": "gemini", "name": "Gemini", "default_base_url": "https://generativelanguage.googleapis.com/v1beta", "default_model": "gemini-2.5-pro", "auth_types": ["api_key", "oauth"], "auth_url": "https://aistudio.google.com/apikey"},
+    {"key": "anthropic", "name": "Anthropic", "default_base_url": "https://api.anthropic.com/v1", "default_model": "claude-3-7-sonnet-latest", "auth_types": ["api_key"], "auth_url": "https://console.anthropic.com/settings/keys"},
+    {"key": "qwen", "name": "通义千问", "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "default_model": "qwen-plus", "auth_types": ["api_key"], "auth_url": "https://dashscope.console.aliyun.com/apiKey"},
+    {"key": "zhipu", "name": "智谱", "default_base_url": "https://open.bigmodel.cn/api/paas/v4", "default_model": "glm-4.5", "auth_types": ["api_key"], "auth_url": "https://open.bigmodel.cn/usercenter/apikeys"},
+    {"key": "deepseek", "name": "DeepSeek", "default_base_url": "https://api.deepseek.com/v1", "default_model": "deepseek-chat", "auth_types": ["api_key"], "auth_url": "https://platform.deepseek.com/api_keys"},
+    {"key": "ollama", "name": "Ollama", "default_base_url": "http://localhost:11434/v1", "default_model": "llama3.1", "auth_types": ["api_key"], "auth_url": ""},
 ]
 
 AI_PROVIDER_FLAG_KEYS = [
@@ -100,15 +100,25 @@ def _ai_config_to_dict(cfg: UserAIConfig) -> dict:
 
 
 def _user_to_dict(user: User) -> dict:
+    role_val = "user"
+    try:
+        role_val = getattr(user, "role", "user") or "user"
+    except Exception:
+        pass
+    verified = False
+    try:
+        verified = getattr(user, "is_email_verified", False) or False
+    except Exception:
+        pass
     return {
         "id": user.id,
         "email": user.email,
         "username": user.username,
         "is_active": user.is_active,
         "is_admin": user.is_admin,
-        "role": getattr(user, "role", "user") or "user",
-        "role_label": _role_label(getattr(user, "role", "user") or "user"),
-        "is_email_verified": user.is_email_verified,
+        "role": role_val,
+        "role_label": _role_label(role_val),
+        "is_email_verified": verified,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "updated_at": user.updated_at.isoformat() if user.updated_at else None,
     }
@@ -294,6 +304,23 @@ def api_save_user_ai_config(
     db.commit()
     db.refresh(cfg)
     return {"ok": True, "config": _ai_config_to_dict(cfg)}
+
+
+@api_router.delete("/api/admin/ai-config/{config_id}")
+def api_delete_user_ai_config(
+    config_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cfg = db.query(UserAIConfig).filter(
+        UserAIConfig.id == config_id,
+        UserAIConfig.user_id == current_user.id,
+    ).first()
+    if not cfg:
+        raise HTTPException(status_code=404, detail="配置不存在")
+    db.delete(cfg)
+    db.commit()
+    return {"ok": True}
 
 
 # ── Page: Admin panel ────────────────────────────────────────────────────
