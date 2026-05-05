@@ -7,6 +7,7 @@ import signal
 import subprocess
 import threading
 from typing import Optional, List
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,6 +22,8 @@ from app.core.security import get_current_user, get_current_user_optional, hash_
 from app.core.templates import templates
 from app.database.session import get_db
 from app.database.models import User, SiteConfig, Announcement, UserAIConfig
+from app.services.monitor_service import get_server_status, check_alerts
+import httpx
 
 ROLE_LABELS = {
     "user": "普通用户",
@@ -184,6 +187,20 @@ OAUTH_SCOPES = {
     "anthropic": "offline model:read model:write",
     "zhipu": "all",
 }
+
+
+def _build_ai_oauth_url(provider: str, request: Request) -> str:
+    if provider not in OAUTH_URLS:
+        raise HTTPException(status_code=400, detail="Unsupported OAuth provider")
+    client_id = os.getenv(f"{provider.upper()}_CLIENT_ID", "")
+    redirect_uri = f"{request.base_url}api/ai/oauth/callback/{provider}"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": OAUTH_SCOPES.get(provider, ""),
+    }
+    return f"{OAUTH_URLS[provider]}?{urlencode(params)}"
 
 # ── Helper: check if admin exists ────────────────────────────────────────
 
@@ -417,51 +434,77 @@ def ai_settings_page(
 
 
 @api_router.get("/api/ai/oauth/{provider}")
-def api_ai_oauth_start(
+async def oauth_redirect(
     provider: str,
+    request: Request,
+):
+    return RedirectResponse(url=_build_ai_oauth_url(provider, request))
+
+
+@api_router.get("/api/admin/ai-oauth-url/{provider}")
+def api_get_ai_oauth_url(
+    provider: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
-    provider = provider.strip().lower()
-    provider_meta = next((p for p in AI_PROVIDERS if p["key"] == provider), None)
-    if not provider_meta or "oauth" not in provider_meta.get("auth_types", []):
-        raise HTTPException(status_code=404, detail="该厂商不支持 OAuth")
+    return {"ok": True, "provider": provider, "auth_url": _build_ai_oauth_url(provider, request)}
 
-    client_id = os.environ.get(f"{provider.upper()}_OAUTH_CLIENT_ID", "").strip()
-    redirect_uri = os.environ.get(f"{provider.upper()}_OAUTH_REDIRECT_URI", "").strip()
-    if not client_id or not redirect_uri:
-        provider_name = provider_meta["name"]
-        fallback_url = provider_meta.get("auth_url") or "#"
-        return HTMLResponse(
-            f"""
-            <html><head><meta charset="utf-8"><title>{provider_name} OAuth</title></head>
-            <body style="font-family:system-ui;padding:32px;line-height:1.7">
-                <h2>{provider_name} 账号授权</h2>
-                <p>当前没有配置专用 OAuth Client，因此先使用手动授权/账号凭据导入模式：</p>
-                <ol>
-                    <li>打开 <a href="{fallback_url}" target="_blank" rel="noopener">{provider_name} 授权/密钥页面</a> 登录账号。</li>
-                    <li>复制页面返回的 token / code / JSON 凭据。</li>
-                    <li>回到 SciFigLab 的 AI 设置，在 OAuth 模式下粘贴到「授权结果」输入框并保存。</li>
-                </ol>
-                <p>如果后续凭据失效，调用时会提示账号凭据错误，重新授权即可。</p>
-                <hr>
-                <p>如果你要改成自动跳转回调模式，需要配置：</p>
-                <pre>{provider.upper()}_OAUTH_CLIENT_ID=你的客户端ID
-{provider.upper()}_OAUTH_REDIRECT_URI=你的回调地址</pre>
-            </body></html>
-            """
+
+@api_router.get("/api/ai/oauth/callback/{provider}")
+async def oauth_callback(
+    provider: str,
+    request: Request,
+    code: str = "",
+    db: Session = Depends(get_db),
+):
+    if provider not in OAUTH_URLS:
+        raise HTTPException(status_code=400, detail="Unsupported OAuth provider")
+    if not code:
+        return HTMLResponse("<html><body>未获取到授权 code，请重新授权。</body></html>")
+    return HTMLResponse(
+        "<html><body style='font-family:system-ui;padding:24px'>"
+        "<h3>授权成功</h3>"
+        "<p>请复制下面的授权 code，回到 AI 设置页面粘贴到“授权结果 / 账号凭据”后保存。</p>"
+        f"<textarea style='width:100%;height:120px'>{code}</textarea>"
+        "</body></html>"
+    )
+    client_id = os.getenv(f"{provider.upper()}_CLIENT_ID", "")
+    client_secret = os.getenv(f"{provider.upper()}_CLIENT_SECRET", "")
+    redirect_uri = f"{request.base_url}api/ai/oauth/callback/{provider}"
+    token_url = {
+        "openai": "https://api.openai.com/oauth/token",
+        "gemini": "https://oauth2.googleapis.com/token",
+        "anthropic": "https://api.anthropic.com/oauth/token",
+        "zhipu": "https://open.bigmodel.cn/oauth2/token"
+    }.get(provider, "")
+    if not token_url:
+        raise HTTPException(status_code=400, detail="No token URL for provider")
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            token_url,
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": client_id,
+                "client_secret": client_secret
+            }
         )
-
-    from urllib.parse import urlencode
-    query = urlencode({
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "response_type": "code",
-        "scope": OAUTH_SCOPES[provider],
-        "state": f"user:{current_user.id}:provider:{provider}",
-        "access_type": "offline",
-        "prompt": "consent",
-    })
-    return RedirectResponse(url=f"{OAUTH_URLS[provider]}?{query}", status_code=302)
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to get token: {response.text}")
+        token_data = response.json()
+        access_token = token_data.get("access_token", "")
+        if not access_token:
+            raise HTTPException(status_code=400, detail="No access token received")
+        # 保存到数据库
+        cfg = db.query(UserAIConfig).filter(UserAIConfig.provider == provider, UserAIConfig.auth_type == "oauth").first()
+        if not cfg:
+            cfg = UserAIConfig(provider=provider, model="", base_url="", auth_type="oauth", api_key_enc=access_token)
+            db.add(cfg)
+        else:
+            cfg.api_key_enc = access_token
+        db.commit()
+        return f"<html><body><script>window.opener.postMessage({{success:true,provider:'{provider}'}}, '*');window.close();</script></body></html>"
 
 
 @api_router.get("/api/admin/ai-config")
@@ -492,8 +535,11 @@ def api_save_user_ai_config(
     auth_type = req.auth_type
     model = req.model.strip()
     if provider != "custom" and provider_meta:
-        if auth_type not in provider_meta["auth_types"]:
-            auth_type = provider_meta["auth_types"][0]
+        auth_types = ["api_key"]
+        if provider_meta.get("supports_oauth"):
+            auth_types.append("oauth")
+        if auth_type not in auth_types:
+            auth_type = auth_types[0]
         model = model or provider_meta.get("default_model", "")
     if not model:
         raise HTTPException(status_code=400, detail="请填写模型名称")
@@ -510,7 +556,10 @@ def api_save_user_ai_config(
         credential = _extract_ai_credential(req.api_key)
     cfg.auth_type = auth_type
     cfg.model = model
-    cfg.api_key_enc = encrypt_text(credential) if credential else ""
+    if credential and credential != "******":
+        cfg.api_key_enc = encrypt_text(credential)
+    elif not cfg.api_key_enc:
+        cfg.api_key_enc = ""
     cfg.base_url = req.base_url.strip() or (provider_meta["default_base_url"] if provider_meta else "")
     cfg.is_enabled = bool(req.is_enabled)
     db.commit()
