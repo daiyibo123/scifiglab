@@ -146,53 +146,105 @@
 
 {% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var providerSelect = document.getElementById('aiProvider');
-    var authType = document.getElementById('aiAuthType');
-    var authTypeCol = document.getElementById('authTypeCol');
-    var modelInput = document.getElementById('aiModel');
-    var modelOptions = document.getElementById('aiModelOptions');
-    var baseUrlInput = document.getElementById('aiBaseUrl');
-    var apiKeyInput = document.getElementById('aiApiKey');
-    var apiKeySection = document.getElementById('apiKeySection');
-    var oauthSection = document.getElementById('oauthSection');
-    var oauthLinkInput = document.getElementById('oauthLinkInput');
-    var oauthCopyBtn = document.getElementById('oauthCopyBtn');
-    var oauthRedirectBtn = document.getElementById('oauthRedirectBtn');
-    var oauthRedirectText = document.getElementById('oauthRedirectText');
-    var oauthTokenInput = document.getElementById('oauthTokenInput');
-    var enabledCheck = document.getElementById('aiEnabled');
-    var saveBtn = document.getElementById('aiSaveBtn');
-    var hint = document.getElementById('aiHint');
-    var configList = document.getElementById('configList');
-    var providerHint = document.getElementById('aiProviderHint');
-    var customFields = document.getElementById('customFields');
-    var customCallModel = document.getElementById('customCallModel');
-    var customReqModel = document.getElementById('customReqModel');
-    var getApiKeyBtn = document.getElementById('getApiKeyBtn');
-    var getApiKeyBtnText = document.getElementById('getApiKeyBtnText');
-    var apiKeyHint = document.getElementById('apiKeyHint');
-    var providerMeta = [];
-
-    var OAUTH_PROVIDERS = ['openai', 'gemini', 'anthropic', 'zhipu'];
-
-    var OAUTH_LINKS = {
-        openai: '/api/ai/oauth/openai',
-        gemini: '/api/ai/oauth/gemini',
-        anthropic: '/api/ai/oauth/anthropic',
-        zhipu: '/api/ai/oauth/zhipu'
+    var providerMeta = [
+        { key: 'openai', name: 'OpenAI', oauthUrl: 'https://api.openai.com/oauth/authorize' },
+        { key: 'gemini', name: 'Gemini', oauthUrl: 'https://accounts.google.com/o/oauth2/v2/auth' },
+        { key: 'anthropic', name: 'Claude', oauthUrl: 'https://api.anthropic.com/oauth/authorize' },
+        { key: 'zhipu', name: '智谱 GLM', oauthUrl: 'https://open.bigmodel.cn/oauth2/authorize' }
+    ];
+    var oauthProviders = providerMeta.map(function(p) { return p.key; });
+    var providerModels = {
+        openai: [
+            'gpt-4.1', 'gpt-4o', 'gpt-4o-mini', 
+            'gpt-5', 'gpt-5-mini', 'gpt-5.2', 'gpt-5.2-Codex', 
+            'gpt-5.4', 'gpt-5.4-fast', 'gpt-5.5', 'gpt-5.5-pro'
+        ],
+        gemini: [
+            'gemini-2.5-pro', 'gemini-2.5-flash', 
+            'gemini-3.0-pro', 'gemini-3.0-flash', 'gemini-3.1-pro-preview'
+        ],
+        anthropic: [
+            'claude-3-7-sonnet-latest', 'claude-3-5-sonnet-latest', 
+            'claude-3-5-haiku-latest', 'claude-3-opus-latest', 
+            'claude-4-sonnet', 'claude-4-opus'
+        ],
+        qwen: [
+            'qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-long', 
+            'qwen-vl-max', 'qwen-vl-plus', 
+            'qwen2.5-72B-instruct', 'qwen2.5-32B-instruct', 
+            'qwen3-235B-A22B', 'qwen3-max', 'qwen3.5-397B-A17B', 
+            'qwen-deep-research', 'qwen-math-plus', 'qwen-omni-turbo'
+        ],
+        zhipu: [
+            'glm-4.5', 'glm-4-plus', 'glm-4-flash', 
+            'glm-5', 'glm-5-plus', 'glm-5-flash'
+        ],
+        deepseek: [
+            'deepseek-chat', 'deepseek-reasoner', 
+            'deepseek-v3', 'deepseek-v3.1', 'deepseek-v3.2', 
+            'deepseek-v4-pro', 'deepseek-v4-flash'
+        ],
+        nvidia: [
+            'nvidia/llama-3.1-nemotron-70b-instruct', 
+            'meta/llama-3.1-405b-instruct', 
+            'meta/llama-3.1-70b-instruct', 
+            'mistralai/mixtral-8x7b-instruct-v0.1', 
+            'nvidia/nemotron-5-340b', 'nvidia/llama-4-500b', 
+            'nvidia/mistral-large-2-instruct', 'nvidia/codellama-70b', 
+            'nvidia/llama-3.3-nemotron-super-49b-v1', 
+            'nvidia/llama-3.1-nemotron-ultra-253B-v1', 
+            'nvidia/deepseek-v4-pro', 'gemma-4-31b-it'
+        ],
+        xiaomi: [
+            'MiMo-2.5-7B', 'MiMo-2.5-VL-7B', 'xiaomi-mimo-2.5', 
+            'MiMo-2.5-10B', 'MiMo-2.5-VL-10B', 'MiMo-V2.5-Pro'
+        ],
+        ollama: [
+            'llama3.1', 'llama3.2', 'qwen2.5', 'deepseek-r1', 
+            'mistral', 'gemma2', 'llama4', 'qwen3'
+        ],
+        gemma: [
+            'gemma-2-27b-it', 'gemma-3-12b-it', 'gemma-4-31b-it', 
+            'gemma-3n-e2b-it', 'gemma-3n-e4b-it'
+        ]
     };
+    var enabledProviders = Object.keys(providerModels);
 
-    var OAUTH_NAMES = {
-        openai: 'OpenAI',
-        gemini: 'Google Gemini',
-        anthropic: 'Claude',
-        zhipu: '智谱 GLM'
-    };
+    document.addEventListener('DOMContentLoaded', function() {
+        var providerSelect = document.getElementById('aiProvider');
+        var modelInput = document.getElementById('aiModel');
+        var modelOptions = document.getElementById('aiModelOptions');
+        var baseUrlInput = document.getElementById('aiBaseUrl');
+        var apiKeyInput = document.getElementById('aiApiKey');
+        var oauthBtn = document.getElementById('oauthBtn');
+        var oauthLink = document.getElementById('oauthLink');
+        var saveBtn = document.getElementById('aiSaveBtn');
+        var resetBtn = document.getElementById('resetBtn');
+        var cancelBtn = document.getElementById('cancelBtn');
+        var editIdInput = document.getElementById('editId');
+        var configsWrap = document.getElementById('configList');
 
-    function isCustom() { return providerSelect.value === 'custom'; }
-    function supportsOAuth() { return OAUTH_PROVIDERS.indexOf(providerSelect.value) !== -1; }
-    function isOAuth() { return authType.value === 'oauth'; }
+        fillProviderOptions();
+        refreshConfigs();
+
+        providerSelect.addEventListener('change', function() {
+            var provider = this.value;
+            var models = providerModels[provider] || [];
+            fillModelOptions(models);
+            baseUrlInput.value = provider ? (providerMeta.find(function(p) { return p.key === provider; }) || {}).defaultBaseUrl || '' : '';
+            var supportsOauth = oauthProviders.indexOf(provider) >= 0;
+            oauthBtn.style.display = supportsOauth ? 'inline-block' : 'none';
+            apiKeyInput.style.display = supportsOauth ? 'none' : 'block';
+            oauthLink.href = (providerMeta.find(function(p) { return p.key === provider; }) || {}).oauthUrl || '#';
+        });
+
+        saveBtn.addEventListener('click', saveConfig);
+        resetBtn.addEventListener('click', resetForm);
+        cancelBtn.addEventListener('click', function() {
+            editIdInput.value = '';
+            resetForm();
+        });
+    });
 
     function fillProviderOptions() {
         var enabled = providerMeta.filter(function(p) { return p.enabled !== false; });
@@ -209,224 +261,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
-    function updateAuthTypeOptions() {
-        if (isCustom()) {
-            authType.innerHTML = '<option value="api_key">API Key</option>';
-            authTypeCol.style.display = '';
-            return;
-        }
-        var html = '<option value="api_key">API Key</option>';
-        if (supportsOAuth()) {
-            html += '<option value="oauth">OAuth 授权登录</option>';
-        }
-        authType.innerHTML = html;
-        authType.value = 'api_key';
-    }
-
-    function toggleAuthSections() {
-        if (isOAuth() && supportsOAuth()) {
-            apiKeySection.style.display = 'none';
-            oauthSection.style.display = 'block';
-            var provider = providerSelect.value;
-            var link = window.location.origin + OAUTH_LINKS[provider];
-            oauthLinkInput.value = link;
-            oauthRedirectBtn.href = link;
-            oauthRedirectText.textContent = '去 ' + OAUTH_NAMES[provider] + ' 授权';
-            apiKeyHint.textContent = '';
-            getApiKeyBtn.style.display = 'none';
-        } else {
-            apiKeySection.style.display = 'block';
-            oauthSection.style.display = 'none';
-        }
-    }
-
-    function updateProviderDefaults() {
-        if (isCustom()) {
-            customFields.classList.add('show');
-            fillModelOptions([]);
-            baseUrlInput.placeholder = '输入自定义 API 地址';
-            modelInput.placeholder = '输入模型名称';
-            providerHint.textContent = '自定义厂商：填写 API 地址和模型名称';
-            getApiKeyBtn.style.display = 'none';
-            apiKeyHint.textContent = '';
-            updateAuthTypeOptions();
-            toggleAuthSections();
-            return;
-        }
-        customFields.classList.remove('show');
-        var meta = providerMeta.find(function(p) { return p.key === providerSelect.value; });
-        if (!meta) return;
-        var prevBaseUrl = baseUrlInput.dataset.default || '';
-        var prevModel = modelInput.dataset.default || '';
-        fillModelOptions(meta.models || []);
-        if (!baseUrlInput.value || baseUrlInput.value === prevBaseUrl) baseUrlInput.value = meta.default_base_url || '';
-        if (!modelInput.value || modelInput.value === prevModel) modelInput.value = meta.default_model || '';
-        baseUrlInput.dataset.default = meta.default_base_url || '';
-        modelInput.dataset.default = meta.default_model || '';
-        providerHint.textContent = '推荐模型：' + (meta.default_model || '未设置') + '，可选模型：' + ((meta.models || []).join(' / ') || '未设置');
-
-        updateAuthTypeOptions();
-        toggleAuthSections();
-
-        if (meta.auth_url && !isOAuth()) {
-            getApiKeyBtn.href = meta.auth_url;
-            getApiKeyBtn.style.display = 'inline-flex';
-            getApiKeyBtnText.textContent = '去 ' + meta.name + ' 获取 Key';
-            apiKeyHint.textContent = '密钥创建后复制粘贴即可，安全存储在服务器端';
-        } else if (!isOAuth()) {
-            getApiKeyBtn.style.display = 'none';
-            apiKeyHint.textContent = meta.key === 'ollama' ? '本地服务，无需 API Key' : '';
-        }
-    }
-
-    function clearForm() {
-        modelInput.value = '';
+    function resetForm() {
+        providerSelect.value = 'openai';
+        fillModelOptions(providerModels['openai'] || []);
         baseUrlInput.value = '';
         apiKeyInput.value = '';
-        oauthTokenInput.value = '';
-        fillModelOptions([]);
-        customCallModel.value = '';
-        customReqModel.value = '';
-        enabledCheck.checked = true;
-        baseUrlInput.dataset.default = '';
-        modelInput.dataset.default = '';
-        authType.value = 'api_key';
+        apiKeyInput.style.display = 'none';
+        oauthBtn.style.display = 'inline-block';
+        saveBtn.textContent = '保存';
+        saveBtn.classList.remove('btn-warning');
+        saveBtn.classList.add('btn-primary');
+        editIdInput.value = '';
     }
 
-    async function loadConfigs() {
-        try {
-            var resp = await fetch('/api/admin/ai-config');
-            var data = await resp.json();
-            providerMeta = data.providers || [];
-            fillProviderOptions();
-            providerSelect.value = 'openai';
-            updateProviderDefaults();
-            renderConfigList(data.configs || []);
-        } catch (e) {
-            configList.innerHTML = '<div class="text-danger" style="font-size:.82rem">加载失败：' + e.message + '</div>';
-        }
+    function refreshConfigs() {
+        fetch('/api/ai/configs').then(function(resp) {
+            if (!resp.ok) throw new Error('Failed to fetch configs');
+            return resp.json();
+        }).then(function(data) {
+            window.aiConfigs = data;
+            var html = data.map(function(cfg, i) {
+                var badge = cfg.auth_type === 'oauth' ? '<span class="badge bg-info bg-opacity-10 text-info ms-1">OAuth</span>' : '';
+                return (
+                    '<div class="border-bottom py-2">' +
+                    '    <div><span class="fw-semibold">' + (cfg.provider_name || cfg.provider || '未知厂商') + ' &rarr; ' + cfg.model + '</span>' + badge + '</div>' +
+                    '    <div class="small text-secondary">' + (cfg.base_url || '-') + '</div>' +
+                    '    <div class="mt-1">' +
+                    '        <button class="btn btn-sm btn-outline-primary edit-btn" data-id="' + cfg.id + '"><i class="bi bi-pencil me-1"></i>编辑</button>' +
+                    '        <button class="btn btn-sm btn-outline-danger delete-btn" data-id="' + cfg.id + '" data-name="' + cfg.model + '"><i class="bi bi-trash3 me-1"></i>删除</button>' +
+                    '    </div>' +
+                    '</div>'
+                );
+            }).join('');
+            configsWrap.innerHTML = html || '<div class="empty-state"><i class="bi bi-database"></i><p>暂无配置</p></div>';
+            document.querySelectorAll('.edit-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-id');
+                    editConfig(id);
+                });
+            });
+            document.querySelectorAll('.delete-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-id');
+                    var name = this.getAttribute('data-name');
+                    if (confirm('确认删除配置 "' + name + '" 吗？')) {
+                        deleteConfig(id);
+                    }
+                });
+            });
+        }).catch(function(e) {
+            configsWrap.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-circle text-danger"></i><p>加载失败：' + e.message + '</p></div>';
+        });
     }
 
-    function renderConfigList(configs) {
-        if (!configs.length) {
-            configList.innerHTML = '<div class="text-muted" style="font-size:.82rem">暂无已保存的配置，请在下方新增。</div>';
+    function saveConfig() {
+        var provider = providerSelect.value;
+        var model = modelInput.value.trim();
+        var baseUrl = baseUrlInput.value.trim();
+        var apiKey = apiKeyInput.value.trim();
+        var editId = editIdInput.value;
+        if (!provider) {
+            alert('请选择厂商');
             return;
         }
-        configList.innerHTML = configs.map(function(c) {
-            var name = c.provider;
-            var meta = providerMeta.find(function(p) { return p.key === c.provider; });
-            if (meta) name = meta.name;
-            else if (c.provider === 'custom') name = '自定义';
-            var authLabel = c.auth_type === 'oauth' ? '<span class="badge bg-info text-dark" style="font-size:.68rem">OAuth</span>' : '';
-            return '<div class="ai-config-row">'
-                + '<span class="provider-name">' + name + ' ' + authLabel + '</span>'
-                + '<span class="provider-model">' + (c.model || '未设置') + (c.has_api_key ? ' &middot; <i class="bi bi-key-fill text-success" title="已配置密钥"></i>' : ' &middot; <i class="bi bi-key text-warning" title="未配置密钥"></i>') + '</span>'
-                + '<span class="provider-status ' + (c.is_enabled ? 'on' : 'off') + '">' + (c.is_enabled ? '启用' : '禁用') + '</span>'
-                + '<div class="provider-actions">'
-                + '<button class="btn btn-sm btn-outline-primary btn-edit-config" data-provider="' + c.provider + '" style="font-size:.72rem;padding:.2rem .5rem"><i class="bi bi-pencil"></i></button>'
-                + '<button class="btn btn-sm btn-outline-danger btn-del-config" data-id="' + c.id + '" style="font-size:.72rem;padding:.2rem .5rem"><i class="bi bi-trash"></i></button>'
-                + '</div>'
-                + '</div>';
-        }).join('');
-        configList.querySelectorAll('.btn-edit-config').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var provider = this.dataset.provider;
-                providerSelect.value = provider;
-                updateProviderDefaults();
-                var cfg = configs.find(function(c) { return c.provider === provider; });
-                if (cfg) {
-                    modelInput.value = cfg.model || '';
-                    baseUrlInput.value = cfg.base_url || '';
-                    apiKeyInput.value = cfg.api_key || '';
-                    oauthTokenInput.value = cfg.oauth_token || '';
-                    if (provider === 'custom') {
-                        customCallModel.value = cfg.model || '';
-                    }
-                    if (cfg.auth_type === 'oauth' && supportsOAuth()) {
-                        authType.value = 'oauth';
-                        toggleAuthSections();
-                    }
-                }
-            });
-        });
-        configList.querySelectorAll('.btn-del-config').forEach(function(btn) {
-            btn.addEventListener('click', async function() {
-                if (!confirm('确定删除此配置？')) return;
-                try {
-                    var resp = await fetch('/api/admin/ai-config/' + this.dataset.id, {method: 'DELETE'});
-                    var data = await resp.json();
-                    if (data.ok) loadConfigs();
-                    else alert(data.detail || '删除失败');
-                } catch(e) { alert('删除失败'); }
-            });
+        if (!model) {
+            alert('请输入模型名称');
+            return;
+        }
+        var isOauth = oauthProviders.indexOf(provider) >= 0 && apiKeyInput.style.display === 'none';
+        var data = {
+            provider: provider === 'custom' ? prompt('请输入自定义厂商标识', 'custom') : provider,
+            model: model,
+            base_url: baseUrl,
+            auth_type: isOauth ? 'oauth' : 'api_key',
+            api_key: isOauth ? '' : apiKey
+        };
+        if (editId) data.id = editId;
+        fetch('/api/ai/config', {
+            method: editId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(function(resp) {
+            if (!resp.ok) throw new Error('Failed to save config');
+            return resp.json();
+        }).then(function() {
+            editIdInput.value = '';
+            resetForm();
+            refreshConfigs();
+        }).catch(function(e) {
+            alert('保存失败：' + e.message);
         });
     }
 
-    providerSelect.addEventListener('change', function() {
-        authType.value = 'api_key';
-        updateProviderDefaults();
-    });
+    function editConfig(id) {
+        var cfg = window.aiConfigs.find(function(c) { return c.id == id; });
+        if (!cfg) return;
+        providerSelect.value = cfg.provider || 'custom';
+        fillModelOptions(providerModels[cfg.provider] || []);
+        modelInput.value = cfg.model || '';
+        baseUrlInput.value = cfg.base_url || '';
+        apiKeyInput.value = cfg.has_api_key ? '******' : '';
+        var supportsOauth = oauthProviders.indexOf(cfg.provider) >= 0;
+        oauthBtn.style.display = supportsOauth ? 'inline-block' : 'none';
+        apiKeyInput.style.display = supportsOauth ? 'none' : 'block';
+        saveBtn.textContent = '更新';
+        saveBtn.classList.remove('btn-primary');
+        saveBtn.classList.add('btn-warning');
+        editIdInput.value = id;
+        oauthLink.href = (providerMeta.find(function(p) { return p.key === cfg.provider; }) || {}).oauthUrl || '#';
+    }
 
-    authType.addEventListener('change', function() {
-        toggleAuthSections();
-        if (!isOAuth()) {
-            var meta = providerMeta.find(function(p) { return p.key === providerSelect.value; });
-            if (meta && meta.auth_url) {
-                getApiKeyBtn.href = meta.auth_url;
-                getApiKeyBtn.style.display = 'inline-flex';
-                getApiKeyBtnText.textContent = '去 ' + meta.name + ' 获取 Key';
-                apiKeyHint.textContent = '密钥创建后复制粘贴即可，安全存储在服务器端';
-            }
-        }
-    });
-
-    oauthCopyBtn.addEventListener('click', function() {
-        oauthLinkInput.select();
-        navigator.clipboard.writeText(oauthLinkInput.value).then(function() {
-            oauthCopyBtn.innerHTML = '<i class="bi bi-check me-1"></i>已复制';
-            setTimeout(function() { oauthCopyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>复制链接'; }, 2000);
-        }).catch(function() {
-            document.execCommand('copy');
-            oauthCopyBtn.innerHTML = '<i class="bi bi-check me-1"></i>已复制';
+    function deleteConfig(id) {
+        fetch('/api/ai/config/' + id, {
+            method: 'DELETE'
+        }).then(function(resp) {
+            if (!resp.ok) throw new Error('Failed to delete config');
+            refreshConfigs();
+        }).catch(function(e) {
+            alert('删除失败：' + e.message);
         });
-    });
-
-    saveBtn.addEventListener('click', async function() {
-        saveBtn.disabled = true;
-        saveBtn.textContent = '保存中…';
-        var provider = providerSelect.value;
-        var body = {
-            provider: provider,
-            auth_type: authType.value,
-            model: isCustom() ? (customCallModel.value || modelInput.value) : modelInput.value,
-            api_key: apiKeyInput.value,
-            oauth_token: oauthTokenInput.value,
-            base_url: baseUrlInput.value,
-            is_enabled: enabledCheck.checked,
-        };
-        if (isCustom() && customReqModel.value) {
-            body.request_model = customReqModel.value;
-        }
-        try {
-            var resp = await fetch('/api/admin/ai-config', {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(body),
-            });
-            var data = await resp.json();
-            if (!resp.ok || !data.ok) throw new Error(data.detail || '保存失败');
-            hint.textContent = '已保存。';
-            clearForm();
-            loadConfigs();
-        } catch (e) {
-            hint.textContent = '保存失败：' + e.message;
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>保存';
-        }
-    });
-
-    loadConfigs();
-});
+    }
 </script>
 {% endblock %}
