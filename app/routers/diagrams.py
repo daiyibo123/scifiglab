@@ -9,6 +9,7 @@ from app.core.security import get_current_user, get_current_user_optional
 from app.core.templates import templates
 from app.database.session import get_db
 from app.database.models import Diagram, Project, User
+from app.services.ai_service import AIRequest, generate_diagram_plan
 
 router = APIRouter(prefix="/diagrams", tags=["diagrams"])
 api_router = APIRouter(tags=["diagrams-api"])
@@ -34,6 +35,10 @@ class DiagramUpdate(BaseModel):
     thumbnail: Optional[str] = None
     layout_direction: Optional[str] = None
     color_scheme: Optional[str] = None
+
+
+class DiagramAiRequest(BaseModel):
+    prompt: str
 
 
 # ── Page routes ──────────────────────────────────────────────────────────
@@ -240,3 +245,31 @@ def api_delete_diagram(
     db.delete(d)
     db.commit()
     return {"ok": True}
+
+
+@api_router.post("/api/diagrams/ai-plan")
+def api_ai_plan(
+    req: DiagramAiRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.routers.admin import _enabled_ai_providers
+    from app.core.secrets import decrypt_text
+    from app.database.models import UserAIConfig
+
+    cfg = db.query(UserAIConfig).filter(
+        UserAIConfig.user_id == current_user.id,
+        UserAIConfig.is_enabled == True,
+    ).order_by(UserAIConfig.updated_at.desc()).first()
+    if not cfg:
+        raise HTTPException(status_code=400, detail="请先在 AI 设置中配置并启用一个模型厂商")
+
+    plan = generate_diagram_plan(AIRequest(
+        provider=cfg.provider,
+        model=cfg.model,
+        prompt=req.prompt,
+        base_url=cfg.base_url,
+        api_key=decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
+        auth_type=cfg.auth_type,
+    ))
+    return {"ok": True, "plan": plan}

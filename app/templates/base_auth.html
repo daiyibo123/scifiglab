@@ -21,10 +21,30 @@
         .auth-brand img { height: 48px; margin-bottom: 0.5rem; }
         .auth-brand h4 { color: #fff; font-weight: 700; margin: 0; }
         .auth-brand p { color: #94a3b8; font-size: 0.85rem; margin: 0; }
+        .home-link {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 10;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .55rem .85rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, .62);
+            border: 1px solid rgba(255, 255, 255, .12);
+            color: #fff;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+            transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+        }
+        .home-link:hover { transform: translateY(-1px); background: rgba(99, 102, 241, .72); color: #fff; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <a href="/" class="home-link"><i class="bi bi-house-door-fill"></i> 首页</a>
     <div class="auth-wrapper">
         <div class="auth-brand">
             <a href="/"><img src="{{ url_for('static', path='img/favicon.svg') }}" alt="logo"></a>

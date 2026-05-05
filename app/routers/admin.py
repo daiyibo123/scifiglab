@@ -14,13 +14,34 @@ from sqlalchemy import func
 
 from app.core.config import settings, BASE_DIR
 from app.core.email import send_email
+from app.core.secrets import encrypt_text, decrypt_text
 from app.core.security import get_current_user, get_current_user_optional, hash_password
 from app.core.templates import templates
 from app.database.session import get_db
-from app.database.models import User, SiteConfig, Announcement
+from app.database.models import User, SiteConfig, Announcement, UserAIConfig
 
 router = APIRouter(tags=["admin"])
 api_router = APIRouter(tags=["admin-api"])
+
+AI_PROVIDERS = [
+    {"key": "openai", "name": "OpenAI", "default_base_url": "https://api.openai.com/v1", "default_model": "gpt-4.1-mini", "auth_types": ["api_key", "oauth"]},
+    {"key": "gemini", "name": "Gemini", "default_base_url": "https://generativelanguage.googleapis.com/v1beta", "default_model": "gemini-2.5-pro", "auth_types": ["api_key", "oauth"]},
+    {"key": "anthropic", "name": "Anthropic", "default_base_url": "https://api.anthropic.com/v1", "default_model": "claude-3-7-sonnet-latest", "auth_types": ["api_key"]},
+    {"key": "qwen", "name": "通义千问", "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "default_model": "qwen-plus", "auth_types": ["api_key"]},
+    {"key": "zhipu", "name": "智谱", "default_base_url": "https://open.bigmodel.cn/api/paas/v4", "default_model": "glm-4.5", "auth_types": ["api_key"]},
+    {"key": "deepseek", "name": "DeepSeek", "default_base_url": "https://api.deepseek.com/v1", "default_model": "deepseek-chat", "auth_types": ["api_key"]},
+    {"key": "ollama", "name": "Ollama", "default_base_url": "http://localhost:11434/v1", "default_model": "llama3.1", "auth_types": ["api_key"]},
+]
+
+AI_PROVIDER_FLAG_KEYS = [
+    "ai_provider_openai_enabled",
+    "ai_provider_gemini_enabled",
+    "ai_provider_anthropic_enabled",
+    "ai_provider_qwen_enabled",
+    "ai_provider_zhipu_enabled",
+    "ai_provider_deepseek_enabled",
+    "ai_provider_ollama_enabled",
+]
 
 
 # ── Helper: check if admin exists ────────────────────────────────────────
@@ -49,6 +70,19 @@ def _set_config(db: Session, key: str, value: str, description: str = ""):
     db.commit()
 
 
+def _ai_config_to_dict(cfg: UserAIConfig) -> dict:
+    return {
+        "id": cfg.id,
+        "provider": cfg.provider,
+        "auth_type": cfg.auth_type,
+        "model": cfg.model,
+        "base_url": cfg.base_url,
+        "is_enabled": cfg.is_enabled,
+        "api_key": decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
+        "has_api_key": bool(cfg.api_key_enc),
+    }
+
+
 # ── Default feature flags ────────────────────────────────────────────────
 
 DEFAULT_FLAGS = {
@@ -66,6 +100,13 @@ DEFAULT_FLAGS = {
     "alert_disk_warning": ("80", "磁盘警告阈值(%)"),
     "alert_disk_critical": ("95", "磁盘严重阈值(%)"),
     "alert_email_enabled": ("false", "启用预警邮件通知"),
+    "ai_provider_openai_enabled": ("true", "启用 OpenAI 厂商"),
+    "ai_provider_gemini_enabled": ("true", "启用 Gemini 厂商"),
+    "ai_provider_anthropic_enabled": ("true", "启用 Anthropic 厂商"),
+    "ai_provider_qwen_enabled": ("true", "启用通义千问厂商"),
+    "ai_provider_zhipu_enabled": ("true", "启用智谱厂商"),
+    "ai_provider_deepseek_enabled": ("true", "启用 DeepSeek 厂商"),
+    "ai_provider_ollama_enabled": ("false", "启用 Ollama 厂商"),
 }
 
 
@@ -75,6 +116,22 @@ def init_default_flags(db: Session):
         if not existing:
             db.add(SiteConfig(key=key, value=default, description=desc))
     db.commit()
+
+
+def _provider_enabled(db: Session, provider_key: str) -> bool:
+    key = f"ai_provider_{provider_key}_enabled"
+    return _get_config(db, key, "true").lower() == "true"
+
+
+def _enabled_ai_providers(db: Session) -> list[dict]:
+    providers = []
+    for item in AI_PROVIDERS:
+        enabled = _provider_enabled(db, item["key"])
+        providers.append({
+            **item,
+            "enabled": enabled,
+        })
+    return providers
 
 
 # ── Page: Admin init (first-time only) ───────────────────────────────────
@@ -130,6 +187,60 @@ def api_admin_init(
     init_default_flags(db)
 
     return {"ok": True, "msg": "管理员创建成功，请登录"}
+
+
+class AIConfigUpsertRequest(BaseModel):
+    provider: str
+    auth_type: str = "api_key"
+    model: str = ""
+    api_key: str = ""
+    base_url: str = ""
+    is_enabled: bool = True
+
+
+@api_router.get("/api/admin/ai-config")
+def api_get_user_ai_config(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(UserAIConfig).filter(UserAIConfig.user_id == current_user.id).order_by(UserAIConfig.updated_at.desc()).all()
+    return {
+        "providers": _enabled_ai_providers(db),
+        "configs": [_ai_config_to_dict(row) for row in rows],
+    }
+
+
+@api_router.put("/api/admin/ai-config")
+def api_save_user_ai_config(
+    req: AIConfigUpsertRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    provider = req.provider.strip().lower()
+    provider_meta = next((p for p in AI_PROVIDERS if p["key"] == provider), None)
+    if not provider_meta:
+        raise HTTPException(status_code=400, detail="不支持的模型厂商")
+    if not _provider_enabled(db, provider):
+        raise HTTPException(status_code=400, detail="该模型厂商已被管理员关闭")
+    auth_type = req.auth_type if req.auth_type in provider_meta["auth_types"] else provider_meta["auth_types"][0]
+    model = req.model.strip() or provider_meta.get("default_model", "")
+    if not model:
+        raise HTTPException(status_code=400, detail="请填写模型名称")
+    cfg = db.query(UserAIConfig).filter(
+        UserAIConfig.user_id == current_user.id,
+        UserAIConfig.provider == provider,
+    ).first()
+    if not cfg:
+        cfg = UserAIConfig(user_id=current_user.id, provider=provider)
+        db.add(cfg)
+    cfg.auth_type = auth_type
+    cfg.model = model
+    cfg.api_key_enc = encrypt_text(req.api_key.strip()) if req.api_key.strip() else ""
+    cfg.base_url = req.base_url.strip() or provider_meta["default_base_url"]
+    cfg.is_enabled = bool(req.is_enabled)
+    db.commit()
+    db.refresh(cfg)
+    return {"ok": True, "config": _ai_config_to_dict(cfg)}
 
 
 # ── Page: Admin panel ────────────────────────────────────────────────────

@@ -198,6 +198,28 @@
                     {% endif %}
                     {% endfor %}
                 </div>
+                <div class="card flag-category">
+                    <div class="flag-cat-header" style="background:linear-gradient(135deg,rgba(15,118,110,.08),rgba(34,197,94,.06));color:#0f766e">
+                        <i class="bi bi-cpu"></i> AI 厂商
+                    </div>
+                    {% for key in ['ai_provider_openai_enabled','ai_provider_gemini_enabled','ai_provider_anthropic_enabled','ai_provider_qwen_enabled','ai_provider_zhipu_enabled','ai_provider_deepseek_enabled','ai_provider_ollama_enabled'] %}
+                    {% if key in flags %}
+                    <div class="flag-item">
+                        <div class="flag-info">
+                            <div class="flag-key">{{ flags[key].description }}</div>
+                            <div class="flag-desc"><code style="font-size:.7rem">{{ key }}</code></div>
+                        </div>
+                        <div class="flag-toggle">
+                            <label class="switch">
+                                <input type="checkbox" class="flag-switch" data-key="{{ key }}"
+                                       {% if flags[key].value == 'true' %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>

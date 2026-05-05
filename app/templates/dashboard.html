@@ -53,12 +53,80 @@
 .feature-card .fc-steps{font-size:.74rem;color:#94a3b8;padding-left:1rem}
 .feature-card .fc-steps li{margin-bottom:.2rem}
 
+/* Full feature showcase */
+.feature-showcase{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}
+.showcase-card{position:relative;overflow:hidden;border:1px solid #e2e8f0;border-radius:1rem;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);padding:1.15rem 1.1rem 1rem;min-height:150px;transition:transform .2s,box-shadow .2s,border-color .2s}
+.showcase-card:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(15,23,42,.08);border-color:#c7d2fe}
+.showcase-card::after{content:'';position:absolute;inset:auto -30px -36px auto;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(99,102,241,.18),transparent 65%)}
+.showcase-card .sc-top{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem}
+.showcase-card .sc-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;box-shadow:0 8px 18px rgba(99,102,241,.16)}
+.showcase-card h6{font-size:.92rem;font-weight:800;color:#0f172a;margin:0}
+.showcase-card p{font-size:.78rem;color:#64748b;line-height:1.55;margin:0 0 .75rem}
+.showcase-card .sc-link{font-size:.76rem;font-weight:700;color:#4f46e5;text-decoration:none}
+.showcase-card .sc-link:hover{text-decoration:underline}
+
+.hero-kpis{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
+.hero-kpi{min-width:120px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);border-radius:1rem;padding:.75rem .9rem}
+.hero-kpi .kpi-val{font-size:1.2rem;font-weight:800;line-height:1}
+.hero-kpi .kpi-lbl{font-size:.72rem;opacity:.85;margin-top:.2rem}
+.hero-badge-row{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1rem}
+.hero-badge-row .badge{border-radius:999px;padding:.45rem .7rem;font-weight:700}
+
 /* Stat mini cards */
 .mini-stat{background:#fff;border-radius:1rem;padding:1rem 1.2rem;display:flex;align-items:center;gap:1rem;border:1px solid #e2e8f0;transition:all .2s}
 .mini-stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.06);transform:translateY(-1px)}
 .mini-stat .ms-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:#fff;flex-shrink:0}
 .mini-stat .ms-val{font-size:1.5rem;font-weight:800;line-height:1;color:#1e293b}
 .mini-stat .ms-lbl{font-size:.75rem;color:#94a3b8;margin-top:.1rem}
+
+.home-cta-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
+.home-cta-bar .btn{border-radius:999px;font-weight:700}
+
+/* Horizontal feature hall */
+.feature-hall{margin-top:1rem;margin-bottom:1.25rem}
+.feature-hall-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.8rem}
+.feature-hall-head h5{margin:0;font-size:.95rem;color:#334155;font-weight:800}
+.feature-hall-head .hall-hint{font-size:.76rem;color:#94a3b8}
+.feature-hall-viewport{position:relative;overflow:hidden;border-radius:1.4rem;background:linear-gradient(180deg,#f8fafc 0%,#eef2ff 100%);border:1px solid #dbe3ee;box-shadow:0 18px 42px rgba(15,23,42,.08);--fx-x:50%;--fx-y:30%;--fx-alpha:.25}
+.feature-hall-viewport::before{content:'';position:absolute;inset:-20%;background:radial-gradient(circle at var(--fx-x) var(--fx-y),rgba(99,102,241,var(--fx-alpha)),transparent 34%),radial-gradient(circle at 72% 22%,rgba(14,165,233,.12),transparent 22%),radial-gradient(circle at 18% 82%,rgba(168,85,247,.10),transparent 24%);pointer-events:none;transition:opacity .2s ease;}
+.feature-hall-track{display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:1rem;scrollbar-width:none;cursor:grab;user-select:none}
+.feature-hall-track.dragging{cursor:grabbing;scroll-behavior:auto}
+.feature-hall-track.dragging .feature-page{pointer-events:none}
+.feature-hall-track::-webkit-scrollbar{display:none}
+.feature-page{flex:0 0 min(84vw,920px);min-height:220px;scroll-snap-align:center;position:relative;border-radius:1.2rem;padding:1.25rem 1.2rem 1.1rem;color:#fff;box-shadow:0 18px 38px rgba(15,23,42,.16);transform:scale(.96);opacity:.82;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s ease,box-shadow .45s ease}
+.feature-page.is-visible{transform:scale(1);opacity:1;box-shadow:0 24px 50px rgba(15,23,42,.2)}
+.feature-page::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 20% 10%,rgba(255,255,255,.18),transparent 26%),radial-gradient(circle at 80% 30%,rgba(255,255,255,.12),transparent 22%),radial-gradient(circle at 50% 90%,rgba(255,255,255,.08),transparent 30%);pointer-events:none}
+.feature-page .fp-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.2fr .8fr;gap:1rem;align-items:center;height:100%}
+.feature-page .fp-copy h4{font-size:1.35rem;font-weight:900;margin:0 0 .5rem}
+.feature-page .fp-copy p{font-size:.88rem;line-height:1.7;opacity:.92;margin:0 0 .8rem;max-width:42rem}
+.feature-page .fp-actions{display:flex;gap:.55rem;flex-wrap:wrap}
+.feature-page .fp-actions .btn{border-radius:999px;font-weight:800;font-size:.82rem;padding:.5rem .95rem}
+.feature-page .fp-art{justify-self:end;max-width:100%;display:flex;flex-direction:column;align-items:flex-end;gap:.6rem}
+.feature-page .fp-stat{background:rgba(255,255,255,.16);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.16);border-radius:1rem;padding:.7rem .9rem;min-width:160px}
+.feature-page .fp-stat strong{display:block;font-size:.92rem;margin-bottom:.15rem}
+.feature-page .fp-stat span{font-size:.76rem;opacity:.9;line-height:1.45}
+.feature-page .fp-ring{width:110px;height:110px;border-radius:50%;border:14px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:2.1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.feature-page .fp-tag-row{display:flex;gap:.4rem;flex-wrap:wrap}
+.feature-page .fp-tag{font-size:.7rem;font-weight:800;padding:.35rem .55rem;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.14)}
+.feature-page .fp-progress{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.16);overflow:hidden;border-radius:0 0 1.2rem 1.2rem}
+.feature-page .fp-progress::before{content:'';display:block;height:100%;width:45%;background:linear-gradient(90deg,rgba(255,255,255,.18),rgba(255,255,255,.8),rgba(255,255,255,.18));animation:fpShimmer 2.5s linear infinite}
+@keyframes fpShimmer{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+.feature-hall-track.grabbed .feature-page{transform:scale(.985)}
+.feature-hall-nav{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:.7rem}
+.feature-hall-dots{display:flex;gap:.45rem;flex-wrap:wrap}
+.feature-hall-dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1;border:none;padding:0}
+.feature-hall-dot.active{width:24px;background:#6366f1;border-radius:999px}
+.feature-hall-arrows{display:flex;gap:.5rem}
+.feature-hall-arrows button{width:34px;height:34px;border:none;border-radius:999px;background:#fff;color:#334155;box-shadow:0 8px 18px rgba(15,23,42,.08)}
+
+.fp-projects{background:linear-gradient(135deg,#5b7cfa 0%,#7c3aed 100%)}
+.fp-experiments{background:linear-gradient(135deg,#10b981 0%,#059669 100%)}
+.fp-groups{background:linear-gradient(135deg,#0ea5e9 0%,#2563eb 100%)}
+.fp-compare{background:linear-gradient(135deg,#f59e0b 0%,#ea580c 100%)}
+.fp-diagrams{background:linear-gradient(135deg,#8b5cf6 0%,#4f46e5 100%)}
+.fp-ai{background:linear-gradient(135deg,#06b6d4 0%,#0f766e 100%)}
+.fp-paper{background:linear-gradient(135deg,#ec4899 0%,#be185d 100%)}
+.fp-admin{background:linear-gradient(135deg,#334155 0%,#0f172a 100%)}
 </style>
 {% endblock %}
 
@@ -67,10 +135,22 @@
 <div class="dash-hero reveal">
     <h1>欢迎回来，{{ current_user.username }}</h1>
     <p>科研实验数据管理与可视化平台 — 让你的研究更高效</p>
+    <div class="hero-kpis">
+        <div class="hero-kpi"><div class="kpi-val">{{ project_count }}</div><div class="kpi-lbl">项目总数</div></div>
+        <div class="hero-kpi"><div class="kpi-val">{{ experiment_count }}</div><div class="kpi-lbl">实验总数</div></div>
+        <div class="hero-kpi"><div class="kpi-val">{{ metric_count }}</div><div class="kpi-lbl">指标记录</div></div>
+    </div>
+    <div class="hero-badge-row">
+        <span class="badge bg-light text-dark"><i class="bi bi-diagram-3 me-1"></i>流程图</span>
+        <span class="badge bg-light text-dark"><i class="bi bi-stars me-1"></i>AI 设置</span>
+        <span class="badge bg-light text-dark"><i class="bi bi-bar-chart-line me-1"></i>对比分析</span>
+        <span class="badge bg-light text-dark"><i class="bi bi-shield-lock me-1"></i>加密存储</span>
+    </div>
     <div class="hero-actions">
         <a href="/projects/new" class="btn btn-light"><i class="bi bi-plus-lg me-1"></i> 新建项目</a>
         <a href="/projects" class="btn btn-outline-light"><i class="bi bi-folder2-open me-1"></i> 我的项目</a>
         <a href="/diagrams/new" class="btn btn-outline-light"><i class="bi bi-diagram-3 me-1"></i> 绘制流程图</a>
+        <a href="#featureShowcase" class="btn btn-outline-light"><i class="bi bi-grid-3x3-gap me-1"></i> 全部功能</a>
     </div>
 </div>
 
@@ -106,6 +186,52 @@
             <div><div class="ms-val">{{ best_count }}</div><div class="ms-lbl">最佳实验</div></div>
         </div>
     </div>
+</div>
+
+<!-- Full feature showcase -->
+<div class="d-flex align-items-center justify-content-between mb-3 reveal">
+    <h5 class="fw-bold mb-0" style="font-size:.95rem;color:#334155"><i class="bi bi-grid-3x3-gap me-1 text-primary"></i> 全功能入口</h5>
+    <span class="text-muted" style="font-size:.78rem">首页直接展示核心能力</span>
+</div>
+<div class="feature-showcase reveal" id="featureShowcase">
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="bi bi-folder2-open"></i></div><h6>项目管理</h6></div>
+        <p>创建项目、维护研究方向、汇总实验数据。</p><a class="sc-link" href="/projects">进入项目页</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#10b981,#34d399)"><i class="bi bi-journal-code"></i></div><h6>实验管理</h6></div>
+        <p>记录状态、参数、标签、文件、图表和结果。</p><a class="sc-link" href="/projects">查看实验列表</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#3b82f6,#60a5fa)"><i class="bi bi-layers"></i></div><h6>实验组</h6></div>
+        <p>批量归组，做消融、方法对比和结果汇总。</p><a class="sc-link" href="/groups">打开实验组</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)"><i class="bi bi-bar-chart-line"></i></div><h6>对比分析</h6></div>
+        <p>多实验曲线叠加、参数差异和最优值自动标记。</p><a class="sc-link" href="/compare">进入对比页</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#8b5cf6,#c084fc)"><i class="bi bi-diagram-3"></i></div><h6>流程图</h6></div>
+        <p>拖拽绘图、自动布局、AI 草稿、导出 Visio / PDF。</p><a class="sc-link" href="/diagrams/new">打开流程图</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#06b6d4,#22d3ee)"><i class="bi bi-stars"></i></div><h6>AI 设置</h6></div>
+        <p>配置 OpenAI、Gemini、Anthropic、DeepSeek 等厂商。</p><a class="sc-link" href="#" id="openAiSettingsInlineLink">打开配置</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#ec4899,#f472b6)"><i class="bi bi-table"></i></div><h6>论文表格</h6></div>
+        <p>自动生成 Markdown、LaTeX、CSV 和 Word 表格。</p><a class="sc-link" href="/groups">生成结果表</a>
+    </div>
+    <div class="showcase-card">
+        <div class="sc-top"><div class="sc-icon" style="background:linear-gradient(135deg,#0f766e,#14b8a6)"><i class="bi bi-shield-lock"></i></div><h6>安全与管理</h6></div>
+        <p>加密存储、管理员开关、权限管理和公告配置。</p><a class="sc-link" href="/admin">进入后台</a>
+    </div>
+</div>
+
+<div class="home-cta-bar reveal mt-4">
+    <a href="/projects/new" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> 快速创建项目</a>
+    <a href="/diagrams/new" class="btn btn-outline-primary"><i class="bi bi-diagram-3 me-1"></i> 画流程图</a>
+    <a href="/admin" class="btn btn-outline-secondary"><i class="bi bi-gear me-1"></i> 管理设置</a>
 </div>
 
 <!-- Quick actions -->
@@ -248,39 +374,155 @@
     </div>
 </div>
 
-<!-- Feature guide — only nav features -->
-<h5 class="fw-bold mb-3 reveal" style="font-size:.95rem;color:#334155"><i class="bi bi-book me-1 text-primary"></i> 功能指南 — 快速上手</h5>
-<div class="row g-3 mb-4 stagger-children">
-    <div class="col-md-3">
-        <div class="feature-card" style="border-left-color:#6366f1;box-shadow:var(--shadow-sm)">
-            <div class="fc-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="bi bi-folder2-open"></i></div>
-            <h6>项目管理</h6>
-            <p>创建项目、管理实验、上传数据文件、查看指标图表。</p>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="projects"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+<!-- Feature hall -->
+<div class="feature-hall reveal" id="featureHall">
+    <div class="feature-hall-head">
+        <h5><i class="bi bi-book me-1 text-primary"></i> 功能展厅</h5>
+        <span class="hall-hint">左右滑动，每一屏展示一个功能</span>
+    </div>
+    <div class="feature-hall-viewport">
+        <div class="feature-hall-track" id="featureHallTrack" aria-label="功能展厅">
+            <section class="feature-page fp-projects" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>项目管理</h4>
+                        <p>把研究方向、实验记录、文件和指标放进同一个项目里，首页即是你的研究中枢。</p>
+                        <div class="fp-actions">
+                            <a href="/projects/new" class="btn btn-light">新建项目</a>
+                            <a href="/projects" class="btn btn-outline-light">查看项目</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-folder2-open"></i></div>
+                        <div class="fp-stat"><strong>结构化管理</strong><span>项目 / 实验 / 文件 / 指标统一组织</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-experiments" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>实验管理</h4>
+                        <p>状态、参数、标签、文件、图表和最优结果全部可追踪，方便复盘和对比。</p>
+                        <div class="fp-actions">
+                            <a href="/projects" class="btn btn-light">进入实验</a>
+                            <a href="/groups" class="btn btn-outline-light">实验组汇总</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-journal-code"></i></div>
+                        <div class="fp-tag-row"><span class="fp-tag">状态</span><span class="fp-tag">参数</span><span class="fp-tag">标签</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-groups" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>实验组</h4>
+                        <p>把相关实验一组归类，输出论文表格和对照结果，做消融和方法比较很顺手。</p>
+                        <div class="fp-actions">
+                            <a href="/groups" class="btn btn-light">打开实验组</a>
+                            <a href="/compare" class="btn btn-outline-light">对比分析</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-layers"></i></div>
+                        <div class="fp-stat"><strong>论文输出</strong><span>Markdown / CSV / Word / LaTeX</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-compare" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>对比分析</h4>
+                        <p>多实验曲线叠加、参数差异、最优值标记，复杂结果也能在一屏里看清楚。</p>
+                        <div class="fp-actions">
+                            <a href="/compare" class="btn btn-light">进入对比</a>
+                            <a href="/projects" class="btn btn-outline-light">选实验</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-bar-chart-line"></i></div>
+                        <div class="fp-stat"><strong>多图层对比</strong><span>曲线、参数、指标、最优标记</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-diagrams" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>流程图</h4>
+                        <p>拖拽式画布、自动布局、AI 草稿、Visio / PDF 导出，适合研究方案和系统架构展示。</p>
+                        <div class="fp-actions">
+                            <a href="/diagrams/new" class="btn btn-light">打开流程图</a>
+                            <a href="/diagrams" class="btn btn-outline-light">流程图列表</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-diagram-3"></i></div>
+                        <div class="fp-stat"><strong>AI 绘图</strong><span>模板 + 厂商配置 + 自动生成草稿</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-ai" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>AI 设置</h4>
+                        <p>统一管理 OpenAI、Gemini、Anthropic、DeepSeek 等厂商配置，图形和分析都能接入。</p>
+                        <div class="fp-actions">
+                            <button type="button" class="btn btn-light" id="openAiSettingsCardBtn">打开配置</button>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-stars"></i></div>
+                        <div class="fp-stat"><strong>模型联动</strong><span>推荐模型 / 默认 Base URL / Auth 自动填充</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-paper" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>论文表格</h4>
+                        <p>生成 Markdown、LaTeX、CSV 和 Word 表格，最优值高亮，直接进论文。</p>
+                        <div class="fp-actions">
+                            <a href="/groups" class="btn btn-light">生成表格</a>
+                            <a href="/projects" class="btn btn-outline-light">找实验</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-table"></i></div>
+                        <div class="fp-stat"><strong>学术输出</strong><span>结果表、图表、导出文件一体化</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
+            <section class="feature-page fp-admin" data-feature-page>
+                <div class="fp-inner">
+                    <div class="fp-copy">
+                        <h4>安全与管理</h4>
+                        <p>加密存储、管理员开关、权限管理和公告配置，后台治理能力完整。</p>
+                        <div class="fp-actions">
+                            <a href="/admin" class="btn btn-light">进入后台</a>
+                        </div>
+                    </div>
+                    <div class="fp-art">
+                        <div class="fp-ring"><i class="bi bi-shield-lock"></i></div>
+                        <div class="fp-stat"><strong>企业级控制</strong><span>功能开关 / 用户权限 / AI 厂商管理</span></div>
+                    </div>
+                </div>
+                <div class="fp-progress"></div>
+            </section>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="feature-card" style="border-left-color:#3b82f6;box-shadow:var(--shadow-sm)">
-            <div class="fc-icon" style="background:linear-gradient(135deg,#3b82f6,#60a5fa)"><i class="bi bi-layers"></i></div>
-            <h6>实验组</h6>
-            <p>将多个实验归组，汇总指标，导出论文表格（Markdown/Word/CSV/LaTeX）。</p>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="groups"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="feature-card" style="border-left-color:#f59e0b;box-shadow:var(--shadow-sm)">
-            <div class="fc-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)"><i class="bi bi-bar-chart-line"></i></div>
-            <h6>对比分析</h6>
-            <p>选择多个实验对比指标曲线、参数差异，快速找到最优方案。</p>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="compare"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="feature-card" style="border-left-color:#8b5cf6;box-shadow:var(--shadow-sm)">
-            <div class="fc-icon" style="background:linear-gradient(135deg,#8b5cf6,#c084fc)"><i class="bi bi-diagram-3"></i></div>
-            <h6>流程图</h6>
-            <p>拖拽绘制流程图，一键美化布局，导出 SVG/PNG/PDF/Visio。</p>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#guideModal" data-guide="diagrams"><i class="bi bi-info-circle me-1"></i>详细使用方法</button>
+    <div class="feature-hall-nav">
+        <div class="feature-hall-dots" id="featureHallDots"></div>
+        <div class="feature-hall-arrows">
+            <button type="button" id="featurePrevBtn" aria-label="上一页"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" id="featureNextBtn" aria-label="下一页"><i class="bi bi-chevron-right"></i></button>
         </div>
     </div>
 </div>
@@ -384,6 +626,125 @@ document.getElementById('guideModal').addEventListener('show.bs.modal', function
         document.getElementById('guideModalBody').innerHTML = g.html;
     }
 });
+
+(function() {
+    var track = document.getElementById('featureHallTrack');
+    var pages = Array.from(document.querySelectorAll('[data-feature-page]'));
+    var dotsWrap = document.getElementById('featureHallDots');
+    var prevBtn = document.getElementById('featurePrevBtn');
+    var nextBtn = document.getElementById('featureNextBtn');
+    var openAiCardBtn = document.getElementById('openAiSettingsCardBtn');
+    var openAiLink = document.getElementById('openAiSettingsInlineLink');
+    var aiBtn = document.getElementById('aiSettingsMenuBtn');
+    var aiModalEl = document.getElementById('aiSettingsModal');
+    var autoTimer = null;
+    var paused = false;
+    var drag = { active: false, startX: 0, startScroll: 0, moved: false, pointerId: null };
+
+    if (!track || !pages.length || !dotsWrap) return;
+
+    var dots = pages.map(function(_, idx) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'feature-hall-dot';
+        btn.title = '第 ' + (idx + 1) + ' 页';
+        btn.addEventListener('click', function() {
+            pages[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        });
+        dotsWrap.appendChild(btn);
+        return btn;
+    });
+
+    function setActive(index) {
+        dots.forEach(function(dot, i) { dot.classList.toggle('active', i === index); });
+        pages.forEach(function(page, i) { page.classList.toggle('is-visible', i === index); });
+    }
+
+    function currentIndex() {
+        var center = track.scrollLeft + track.clientWidth / 2;
+        var best = 0;
+        var bestDist = Infinity;
+        pages.forEach(function(page, idx) {
+            var pageCenter = page.offsetLeft + page.offsetWidth / 2;
+            var dist = Math.abs(pageCenter - center);
+            if (dist < bestDist) { bestDist = dist; best = idx; }
+        });
+        return best;
+    }
+
+    function scrollByPage(dir) {
+        var idx = currentIndex() + dir;
+        idx = Math.max(0, Math.min(pages.length - 1, idx));
+        pages[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    track.addEventListener('scroll', function() {
+        window.requestAnimationFrame(function() { setActive(currentIndex()); });
+    }, { passive: true });
+    track.addEventListener('pointerdown', function(e) {
+        drag.active = true;
+        drag.pointerId = e.pointerId;
+        drag.startX = e.clientX;
+        drag.startScroll = track.scrollLeft;
+        drag.moved = false;
+        paused = true;
+        track.classList.add('dragging');
+        track.classList.remove('grabbed');
+        if (track.setPointerCapture) track.setPointerCapture(e.pointerId);
+    });
+    track.addEventListener('pointermove', function(e) {
+        if (!drag.active) return;
+        var dx = e.clientX - drag.startX;
+        if (Math.abs(dx) > 4) drag.moved = true;
+        track.scrollLeft = drag.startScroll - dx;
+        var rect = track.getBoundingClientRect();
+        var fx = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+        var fy = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+        track.parentElement.style.setProperty('--fx-x', fx.toFixed(2) + '%');
+        track.parentElement.style.setProperty('--fx-y', fy.toFixed(2) + '%');
+        track.parentElement.style.setProperty('--fx-alpha', drag.moved ? '.35' : '.25');
+    });
+    function endDrag() {
+        if (!drag.active) return;
+        drag.active = false;
+        drag.pointerId = null;
+        track.classList.remove('dragging');
+        window.setTimeout(function() { track.classList.add('grabbed'); }, 120);
+        paused = false;
+    }
+    track.addEventListener('pointerup', endDrag);
+    track.addEventListener('pointercancel', endDrag);
+    track.addEventListener('pointerleave', function() {
+        if (drag.active) endDrag();
+    });
+    function resumeAuto() {
+        if (autoTimer) window.clearInterval(autoTimer);
+        autoTimer = window.setInterval(function() {
+            if (paused) return;
+            var idx = currentIndex();
+            var next = (idx + 1) % pages.length;
+            pages[next].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }, 6500);
+    }
+    track.addEventListener('mouseenter', function() { paused = true; });
+    track.addEventListener('mouseleave', function() { paused = false; });
+    track.addEventListener('touchstart', function() { paused = true; }, { passive: true });
+    track.addEventListener('touchend', function() { paused = false; });
+    prevBtn.addEventListener('click', function() { scrollByPage(-1); });
+    nextBtn.addEventListener('click', function() { scrollByPage(1); });
+    [openAiCardBtn, openAiLink, aiBtn].forEach(function(el) {
+        if (!el) return;
+        el.addEventListener('click', function() {
+            if (aiModalEl && window.bootstrap) {
+                var modal = bootstrap.Modal.getOrCreateInstance(aiModalEl);
+                modal.show();
+            }
+        });
+    });
+
+    setActive(0);
+    resumeAuto();
+})();
 
 // ── Scroll reveal animation ──
 (function() {

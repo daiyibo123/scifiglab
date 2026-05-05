@@ -31,6 +31,7 @@ class User(Base):
     uploaded_files = relationship("UploadedFile", back_populates="user", cascade="all, delete-orphan")
     experiment_groups = relationship("ExperimentGroup", back_populates="user", cascade="all, delete-orphan")
     experiment_group_items = relationship("ExperimentGroupItem", back_populates="user", cascade="all, delete-orphan")
+    ai_configs = relationship("UserAIConfig", back_populates="user", cascade="all, delete-orphan")
 
 
 # ---------------------------------------------------------------------------
@@ -250,3 +251,23 @@ class Diagram(Base):
     # relationships
     user = relationship("User", backref="diagrams")
     project = relationship("Project", backref="diagrams")
+
+
+# ---------------------------------------------------------------------------
+# 12. UserAIConfig 用户 AI 配置
+# ---------------------------------------------------------------------------
+class UserAIConfig(Base):
+    __tablename__ = "user_ai_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    provider = Column(String(64), nullable=False, index=True)
+    auth_type = Column(String(32), default="api_key")  # api_key / oauth
+    model = Column(String(128), default="")
+    api_key_enc = Column(Text, default="")
+    base_url = Column(String(256), default="")
+    is_enabled = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="ai_configs")

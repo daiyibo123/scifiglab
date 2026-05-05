@@ -21,6 +21,10 @@
         '#22c55e', '#06b6d4', '#f97316', '#64748b'
     ];
 
+    const CANVAS_MIN_WIDTH = 2000;
+    const CANVAS_MIN_HEIGHT = 1500;
+    const CANVAS_PADDING = 220;
+
     const state = {
         diagramId: config.diagramId || null,
         xml: config.existingXml || '',
@@ -32,6 +36,7 @@
         connectMode: false,
         connectSource: null,
         drag: null,
+        aiConfig: null,
         history: {
             undo: [],
             redo: []
@@ -59,6 +64,7 @@
         initCanvas();
         initImportModal();
         initColorPanel();
+        loadAiConfig();
 
         if (state.xml && loadXmlToState(state.xml)) {
             setStatus('已加载本地流程图，可以继续拖拽编辑', 'ok');
@@ -218,6 +224,17 @@
         });
     }
 
+    async function loadAiConfig() {
+        try {
+            const resp = await fetch('/api/admin/ai-config');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            state.aiConfig = (data.configs || []).find((cfg) => cfg.is_enabled) || null;
+        } catch (err) {
+            state.aiConfig = null;
+        }
+    }
+
     function initPalette() {
         const categorySelect = $('#shapeCategorySelect');
         if (categorySelect) {
@@ -304,8 +321,8 @@
             if (!node) return;
             const point = clientToSvg(event);
             state.drag.moved = true;
-            node.x = clamp(point.x - state.drag.offsetX, 0, 1400 - node.width);
-            node.y = clamp(point.y - state.drag.offsetY, 0, 900 - node.height);
+            node.x = Math.round(point.x - state.drag.offsetX);
+            node.y = Math.round(point.y - state.drag.offsetY);
             render(false);
         });
         window.addEventListener('pointerup', () => {
@@ -474,6 +491,7 @@
 
     function render(updateXml) {
         const shouldUpdateXml = updateXml !== false;
+        updateCanvasSize();
         const defs = [
             '<defs>',
             '<marker id="arrowHead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">',
@@ -839,8 +857,8 @@
         const size = defaultSize(type);
         const node = makeNode(
             type,
-            clamp(Math.round(x - size.width / 2), 0, 1400 - size.width),
-            clamp(Math.round(y - size.height / 2), 0, 900 - size.height),
+            Math.round(x - size.width / 2),
+            Math.round(y - size.height / 2),
             label || defaultLabel(type),
             size.width,
             size.height,
@@ -877,8 +895,8 @@
         pushHistory('复制图形');
         const copy = Object.assign({}, node, {
             id: uniqueId('n'),
-            x: clamp(node.x + 34, 0, 1400 - node.width),
-            y: clamp(node.y + 34, 0, 900 - node.height),
+            x: Math.round(node.x + 34),
+            y: Math.round(node.y + 34),
             label: node.label
         });
         state.local.nodes.push(copy);
@@ -911,6 +929,37 @@
                     ['training', '模型训练'],
                     ['evaluation', '效果评估'],
                     ['paper', '论文 / 报告输出']
+                ]
+            },
+            deeplearn: {
+                label: '深度学习模板',
+                direction: 'TB',
+                items: [
+                    ['dataset', '数据集'],
+                    ['augment', '数据增强'],
+                    ['embedding', '特征表示'],
+                    ['backbone', '骨干网络'],
+                    ['attention', '注意力机制'],
+                    ['training', '训练'],
+                    ['loss', '损失函数'],
+                    ['optimizer', '优化器'],
+                    ['evaluation', '评估'],
+                    ['paper', '结果输出']
+                ]
+            },
+            computer: {
+                label: '计算机系统模板',
+                direction: 'LR',
+                items: [
+                    ['person', '用户'],
+                    ['web', '前端界面'],
+                    ['api', '接口层'],
+                    ['service', '业务服务'],
+                    ['process', '调度 / 处理'],
+                    ['database', '数据库'],
+                    ['cache', '缓存'],
+                    ['server', '服务器'],
+                    ['deployment', '部署']
                 ]
             },
             api: {
@@ -964,50 +1013,32 @@
             setStatus('请先输入想要的流程图描述', 'busy');
             return;
         }
-        const lowered = prompt.toLowerCase();
-        let items = parsePromptSteps(prompt);
-        let direction = state.layoutDirection || 'TB';
-
-        if (!items.length) {
-            if (/api|接口|服务|部署|调用|网关/.test(lowered)) {
-                items = [
-                    ['person', '用户'],
-                    ['data', '请求输入'],
-                    ['api', 'API 网关'],
-                    ['service', '业务服务'],
-                    ['model', '模型处理'],
-                    ['cache', '缓存'],
-                    ['database', '数据读写'],
-                    ['display', '结果输出']
-                ];
-                direction = 'LR';
-            } else if (/论文|报告|文献|投稿|图表/.test(prompt)) {
-                items = [
-                    ['document', '文献整理'],
-                    ['note', '研究问题'],
-                    ['experiment', '实验分析'],
-                    ['metric', '图表指标'],
-                    ['paper', '论文输出']
-                ];
-                direction = 'LR';
-            } else {
-                items = [
-                    ['dataset', '数据采集'],
-                    ['process', '数据清洗'],
-                    ['training', '模型训练'],
-                    ['evaluation', '效果评估'],
-                    ['paper', '结果输出']
-                ];
+        if (!state.aiConfig) {
+            setStatus('未找到可用的 AI 配置，请先到用户菜单里保存 AI 设置', 'busy');
+            return;
+        }
+        const providerName = state.aiConfig.provider || 'AI';
+        setStatus('正在请求 ' + providerName + ' 生成流程图草稿…', 'busy');
+        fetch('/api/diagrams/ai-plan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ prompt }),
+        }).then(async (resp) => {
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data.detail || data.msg || 'AI 生成失败');
+            const plan = data.plan || {};
+            const items = Array.isArray(plan.items) && plan.items.length ? plan.items : parsePromptSteps(prompt);
+            const direction = plan.direction || state.layoutDirection || 'TB';
+            replaceDiagramWithItems(items, direction, 'AI 草稿');
+            const modal = $('#aiDiagramModal');
+            if (modal && window.bootstrap) {
+                const instance = window.bootstrap.Modal.getInstance(modal);
+                if (instance) instance.hide();
             }
-        }
-
-        replaceDiagramWithItems(items, direction, 'AI 草稿');
-        const modal = $('#aiDiagramModal');
-        if (modal && window.bootstrap) {
-            const instance = window.bootstrap.Modal.getInstance(modal);
-            if (instance) instance.hide();
-        }
-        setStatus('已根据描述生成可编辑草稿，后续接入用户 API 后可升级为真正 AI 操作页面', 'ok');
+            setStatus('已根据描述生成可编辑草稿，当前使用 ' + providerName + ' 配置。', 'ok');
+        }).catch((err) => {
+            setStatus('AI 生成失败：' + err.message, 'busy');
+        });
     }
 
     function parsePromptSteps(prompt) {
@@ -1078,8 +1109,11 @@
         const centerX = (stageWrap.scrollLeft + stageWrap.clientWidth / 2) / oldZoom;
         const centerY = (stageWrap.scrollTop + stageWrap.clientHeight / 2) / oldZoom;
         state.zoom = clamp(Math.round(value * 100) / 100, 0.35, 2.5);
-        canvas.style.width = Math.round(1400 * state.zoom) + 'px';
-        canvas.style.height = Math.round(900 * state.zoom) + 'px';
+        const bounds = getDiagramBounds();
+        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
+        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
+        canvas.style.width = Math.round(width * state.zoom) + 'px';
+        canvas.style.height = Math.round(height * state.zoom) + 'px';
         requestAnimationFrame(() => {
             stageWrap.scrollLeft = Math.max(0, centerX * state.zoom - stageWrap.clientWidth / 2);
             stageWrap.scrollTop = Math.max(0, centerY * state.zoom - stageWrap.clientHeight / 2);
@@ -1088,8 +1122,11 @@
     }
 
     function fitCanvas() {
-        const zoomX = (stageWrap.clientWidth - 24) / 1400;
-        const zoomY = (stageWrap.clientHeight - 24) / 900;
+        const bounds = getDiagramBounds();
+        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
+        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
+        const zoomX = (stageWrap.clientWidth - 24) / width;
+        const zoomY = (stageWrap.clientHeight - 24) / height;
         setZoom(Math.min(1, zoomX, zoomY));
         stageWrap.scrollLeft = 0;
         stageWrap.scrollTop = 0;
@@ -1201,23 +1238,46 @@
             if (direction === 'LR') {
                 const gap = 34;
                 const totalHeight = group.reduce((sum, node) => sum + node.height, 0) + gap * (group.length - 1);
-                let y = clamp((900 - totalHeight) / 2, 34, 820);
+                let y = Math.max(34, (CANVAS_MIN_HEIGHT - totalHeight) / 2);
                 group.forEach((node) => {
-                    node.x = clamp(80 + key * 245, 24, Math.max(24, 1400 - node.width - 24));
-                    node.y = clamp(y, 24, Math.max(24, 900 - node.height - 24));
+                    node.x = Math.round(120 + key * 260);
+                    node.y = Math.round(y);
                     y += node.height + gap;
                 });
             } else {
                 const gap = 38;
                 const totalWidth = group.reduce((sum, node) => sum + node.width, 0) + gap * (group.length - 1);
-                let x = clamp((1400 - totalWidth) / 2, 34, 1320);
+                let x = Math.max(34, (CANVAS_MIN_WIDTH - totalWidth) / 2);
                 group.forEach((node) => {
-                    node.x = clamp(x, 24, Math.max(24, 1400 - node.width - 24));
-                    node.y = clamp(72 + key * 145, 24, Math.max(24, 900 - node.height - 24));
+                    node.x = Math.round(x);
+                    node.y = Math.round(86 + key * 155);
                     x += node.width + gap;
                 });
             }
         });
+    }
+
+    function getDiagramBounds() {
+        const items = [];
+        state.local.nodes.forEach((node) => items.push({ x: node.x, y: node.y, w: node.width, h: node.height }));
+        state.local.backgrounds.forEach((bg) => items.push({ x: bg.x, y: bg.y, w: bg.width, h: bg.height }));
+        if (!items.length) {
+            return { minX: 0, minY: 0, maxX: CANVAS_MIN_WIDTH, maxY: CANVAS_MIN_HEIGHT };
+        }
+        return {
+            minX: Math.min(...items.map((item) => item.x)),
+            minY: Math.min(...items.map((item) => item.y)),
+            maxX: Math.max(...items.map((item) => item.x + item.w)),
+            maxY: Math.max(...items.map((item) => item.y + item.h))
+        };
+    }
+
+    function updateCanvasSize() {
+        const bounds = getDiagramBounds();
+        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
+        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
+        canvas.style.width = Math.round(width * state.zoom) + 'px';
+        canvas.style.height = Math.round(height * state.zoom) + 'px';
     }
 
     function semanticNodeColor(node) {
@@ -1362,8 +1422,11 @@
     function serializeSvg() {
         const cloned = canvas.cloneNode(true);
         cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        cloned.setAttribute('width', '1400');
-        cloned.setAttribute('height', '900');
+        const bounds = getDiagramBounds();
+        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
+        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
+        cloned.setAttribute('width', String(Math.round(width)));
+        cloned.setAttribute('height', String(Math.round(height)));
         cloned.style.backgroundColor = '#ffffff';
         const metadata = document.createElementNS('http://www.w3.org/2000/svg', 'metadata');
         metadata.setAttribute('id', 'scifiglab-data');
@@ -1376,7 +1439,7 @@
         return JSON.stringify({
             format: 'scifiglab-flow',
             version: 1,
-            canvas: { width: 1400, height: 900 },
+            canvas: { width: CANVAS_MIN_WIDTH, height: CANVAS_MIN_HEIGHT },
             layoutDirection: state.layoutDirection || 'TB',
             colorScheme: savedSchemeValue(),
             nodes: state.local.nodes,
@@ -1615,9 +1678,9 @@
     function exportEps() {
         const lines = [
             '%!PS-Adobe-3.0 EPSF-3.0',
-            '%%BoundingBox: 0 0 1400 900',
+            '%%BoundingBox: 0 0 ' + CANVAS_MIN_WIDTH + ' ' + CANVAS_MIN_HEIGHT,
             '/Arial findfont 14 scalefont setfont',
-            '1 1 1 setrgbcolor 0 0 1400 900 rectfill'
+            '1 1 1 setrgbcolor 0 0 ' + CANVAS_MIN_WIDTH + ' ' + CANVAS_MIN_HEIGHT + ' rectfill'
         ];
         state.local.edges.forEach((edge) => {
             const source = getNode(edge.source);
@@ -1627,16 +1690,16 @@
             const b = anchorPoint(target, source);
             const rgb = hexToRgb(edge.stroke || state.colors.stroke) || { r: 71, g: 85, b: 105 };
             lines.push((rgb.r / 255) + ' ' + (rgb.g / 255) + ' ' + (rgb.b / 255) + ' setrgbcolor');
-            lines.push('2 setlinewidth newpath ' + a.x + ' ' + (900 - a.y) + ' moveto ' + b.x + ' ' + (900 - b.y) + ' lineto stroke');
+            lines.push('2 setlinewidth newpath ' + a.x + ' ' + (CANVAS_MIN_HEIGHT - a.y) + ' moveto ' + b.x + ' ' + (CANVAS_MIN_HEIGHT - b.y) + ' lineto stroke');
         });
         state.local.nodes.forEach((node) => {
             const fill = hexToRgb(node.fill) || { r: 255, g: 255, b: 255 };
             const stroke = hexToRgb(node.stroke) || { r: 71, g: 85, b: 105 };
             lines.push((fill.r / 255) + ' ' + (fill.g / 255) + ' ' + (fill.b / 255) + ' setrgbcolor');
-            lines.push('newpath ' + node.x + ' ' + (900 - node.y - node.height) + ' ' + node.width + ' ' + node.height + ' rectfill');
+            lines.push('newpath ' + node.x + ' ' + (CANVAS_MIN_HEIGHT - node.y - node.height) + ' ' + node.width + ' ' + node.height + ' rectfill');
             lines.push((stroke.r / 255) + ' ' + (stroke.g / 255) + ' ' + (stroke.b / 255) + ' setrgbcolor');
-            lines.push('2 setlinewidth newpath ' + node.x + ' ' + (900 - node.y - node.height) + ' ' + node.width + ' ' + node.height + ' rectstroke');
-            lines.push('0 0 0 setrgbcolor ' + (node.x + 10) + ' ' + (900 - node.y - node.height / 2) + ' moveto (' + psEscape(node.label || '') + ') show');
+            lines.push('2 setlinewidth newpath ' + node.x + ' ' + (CANVAS_MIN_HEIGHT - node.y - node.height) + ' ' + node.width + ' ' + node.height + ' rectstroke');
+            lines.push('0 0 0 setrgbcolor ' + (node.x + 10) + ' ' + (CANVAS_MIN_HEIGHT - node.y - node.height / 2) + ' moveto (' + psEscape(node.label || '') + ') show');
         });
         lines.push('showpage', '%%EOF');
         return lines.join('\n');
@@ -1649,8 +1712,8 @@
         const img = new Image();
         img.onload = () => {
             const c = document.createElement('canvas');
-            c.width = 1400;
-            c.height = 900;
+            c.width = CANVAS_MIN_WIDTH;
+            c.height = CANVAS_MIN_HEIGHT;
             const ctx = c.getContext('2d');
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, c.width, c.height);
@@ -1768,7 +1831,7 @@
     function addBackgroundFromDataUrl(dataUrl, name) {
         const before = snapshotState();
         loadImage(dataUrl).then((img) => {
-            const scale = Math.min(900 / img.width, 620 / img.height, 1);
+            const scale = Math.min(CANVAS_MIN_WIDTH / img.width, CANVAS_MIN_HEIGHT / img.height, 1);
             const width = Math.round(img.width * scale);
             const height = Math.round(img.height * scale);
             state.local.backgrounds.push({
@@ -1789,7 +1852,7 @@
 
     async function recognizeFlowchartImage(dataUrl) {
         const img = await loadImage(dataUrl);
-        const scanScale = Math.min(900 / img.width, 900 / img.height, 1);
+        const scanScale = Math.min(CANVAS_MIN_WIDTH / img.width, CANVAS_MIN_HEIGHT / img.height, 1);
         const width = Math.max(1, Math.round(img.width * scanScale));
         const height = Math.max(1, Math.round(img.height * scanScale));
         const c = document.createElement('canvas');
@@ -1860,7 +1923,7 @@
             return box.count > 45 && area > 220 && (aspect > 4.2 || aspect < 0.24);
         });
 
-        const editorScale = Math.min(900 / img.width, 620 / img.height, 1);
+        const editorScale = Math.min(CANVAS_MIN_WIDTH / img.width, CANVAS_MIN_HEIGHT / img.height, 1);
         const factor = editorScale / scanScale;
         const offsetX = 70;
         const offsetY = 55;
@@ -2238,7 +2301,7 @@
         const width = Math.max(0.2, node.width / 100);
         const height = Math.max(0.2, node.height / 100);
         const pinX = (node.x + node.width / 2) / 100;
-        const pinY = (900 - node.y - node.height / 2) / 100;
+        const pinY = (CANVAS_MIN_HEIGHT - node.y - node.height / 2) / 100;
         const name = visioNameForNode(node);
         return '<Shape ID="' + id + '" NameU="' + name + '" Name="' + name + '" Type="Shape">' +
             '<Cell N="PinX" V="' + round(pinX) + '"/><Cell N="PinY" V="' + round(pinY) + '"/>' +
@@ -2257,8 +2320,8 @@
         const a = anchorPoint(source, target);
         const b = anchorPoint(target, source);
         return '<Shape ID="' + id + '" NameU="Dynamic connector" Name="Dynamic connector" Type="Shape">' +
-            '<Cell N="BeginX" V="' + round(a.x / 100) + '"/><Cell N="BeginY" V="' + round((900 - a.y) / 100) + '"/>' +
-            '<Cell N="EndX" V="' + round(b.x / 100) + '"/><Cell N="EndY" V="' + round((900 - b.y) / 100) + '"/>' +
+            '<Cell N="BeginX" V="' + round(a.x / 100) + '"/><Cell N="BeginY" V="' + round((CANVAS_MIN_HEIGHT - a.y) / 100) + '"/>' +
+            '<Cell N="EndX" V="' + round(b.x / 100) + '"/><Cell N="EndY" V="' + round((CANVAS_MIN_HEIGHT - b.y) / 100) + '"/>' +
             '<Cell N="LineColor" V="' + escapeAttr(edge.stroke || state.colors.stroke) + '"/>' +
             '<Section N="Geometry" IX="0"><Row T="MoveTo" IX="1"><Cell N="X" V="0"/><Cell N="Y" V="0"/></Row>' +
             '<Row T="LineTo" IX="2"><Cell N="X" V="1"/><Cell N="Y" V="0"/></Row></Section></Shape>';
@@ -2326,7 +2389,7 @@
             const node = makeNode(
                 type,
                 pinX * 100 - width * 50,
-                900 - pinY * 100 - height * 50,
+                CANVAS_MIN_HEIGHT - pinY * 100 - height * 50,
                 textFromVisioShape(shape) || defaultLabel(type),
                 Math.max(50, width * 100),
                 Math.max(34, height * 100),
@@ -2362,8 +2425,8 @@
                 const endX = visioCell(shape, 'EndX');
                 const endY = visioCell(shape, 'EndY');
                 if ([beginX, beginY, endX, endY].some((v) => v === null)) return;
-                const source = nearestNode(nodes, { x: beginX * 100, y: 900 - beginY * 100 });
-                const target = nearestNode(nodes, { x: endX * 100, y: 900 - endY * 100 });
+                const source = nearestNode(nodes, { x: beginX * 100, y: CANVAS_MIN_HEIGHT - beginY * 100 });
+                const target = nearestNode(nodes, { x: endX * 100, y: CANVAS_MIN_HEIGHT - endY * 100 });
                 if (source && target && source.id !== target.id) edges.push(makeEdge(source.id, target.id));
             });
         }
@@ -2426,7 +2489,7 @@
                 '<mxGeometry relative="1" as="geometry"/></mxCell>'
             );
         });
-        return '<mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0"><root>' + cells.join('') + '</root></mxGraphModel>';
+        return '<mxGraphModel dx="' + CANVAS_MIN_WIDTH + '" dy="' + CANVAS_MIN_HEIGHT + '" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" page="1" pageScale="1" pageWidth="' + CANVAS_MIN_WIDTH + '" pageHeight="' + CANVAS_MIN_HEIGHT + '" math="0" shadow="0"><root>' + cells.join('') + '</root></mxGraphModel>';
     }
 
     function styleForNode(node) {
