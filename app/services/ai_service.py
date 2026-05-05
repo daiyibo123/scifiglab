@@ -66,11 +66,20 @@ def _build_prompt(user_prompt: str) -> str:
 
     return (
         "你是一个专业的图表生成器。用户会描述想要的图表，你需要直接生成完整的 drawio XML。\n\n"
+        "你必须让 AI 控制整张图的绘制：根据用户需求决定节点、关系、布局、分组、颜色和图表类型，而不是只输出简单列表。\n\n"
         "## 工作流程\n"
-        "1. 理解用户需求，判断图表类型（流程图、架构图、UML 时序图、类图、ER 图、思维导图、网络拓扑图等）\n"
+        "1. 理解用户需求，判断图表类型。支持类型包括：flowchart、architecture、uml-sequence、uml-class、er、mindmap、network\n"
         "2. 直接生成完整的 drawio XML\n"
         "3. 自检：确保所有 ID 唯一、坐标是 10 的倍数、节点不重叠、XML 格式正确\n"
         "4. 只输出 XML，不要解释\n\n"
+        "## 类型要求\n"
+        "- flowchart：使用开始/结束、处理、判断、输入输出，必须有清晰箭头流向\n"
+        "- architecture：使用前端、网关、服务、缓存、数据库、部署分层\n"
+        "- uml-sequence：使用参与者生命线和消息箭头表达调用顺序\n"
+        "- uml-class：使用类/接口框，包含属性、方法、继承/依赖关系\n"
+        "- er：使用实体、属性、主外键、1:N/N:M 关系\n"
+        "- mindmap：中心主题在中间，分支向四周展开\n"
+        "- network：客户端、交换/路由/网关、防火墙、服务器、数据库、监控等拓扑节点\n\n"
         "## 输出格式\n"
         "只输出完整的 drawio XML，以 <?xml 开头，以 </mxfile> 结尾。不要用代码块包裹，不要加任何解释文字。\n"
         f"{skill_section}\n\n"
@@ -151,7 +160,10 @@ def _call_gemini(req: AIRequest, prompt: str) -> str:
 def _http_json(url: str, payload: dict, api_key: str, auth_type: str, anthropic: bool = False, gemini: bool = False) -> dict[str, Any]:
     headers = {"Content-Type": "application/json"}
     if anthropic:
-        headers["x-api-key"] = api_key
+        if auth_type == "oauth":
+            headers["Authorization"] = f"Bearer {api_key}"
+        else:
+            headers["x-api-key"] = api_key
         headers["anthropic-version"] = "2023-06-01"
     elif not gemini:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -163,6 +175,10 @@ def _http_json(url: str, payload: dict, api_key: str, auth_type: str, anthropic:
             return json.loads(raw)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else str(exc)
+        if auth_type == "oauth" and exc.code in (400, 401, 403):
+            raise ValueError("账号凭据错误或已失效，请重新授权后粘贴新的授权结果")
+        if exc.code in (401, 403):
+            raise ValueError("API Key 或账号凭据错误，请检查配置")
         raise ValueError(f"AI 请求失败: {detail}")
     except Exception as exc:
         raise ValueError(f"AI 请求失败: {exc}")

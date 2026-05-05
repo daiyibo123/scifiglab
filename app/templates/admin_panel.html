@@ -50,6 +50,8 @@
 .user-meta .user-name{font-weight:600;font-size:.85rem;color:#1e293b}
 .user-meta .user-email{font-size:.72rem;color:#94a3b8}
 .user-badges{display:flex;gap:.35rem;flex-shrink:0;align-items:center}
+.user-create-grid{display:grid;grid-template-columns:1fr 1fr 1fr 140px auto;gap:.5rem;align-items:end}
+@media(max-width:992px){.user-create-grid{grid-template-columns:1fr}}
 </style>
 {% endblock %}
 
@@ -113,8 +115,10 @@
 <!-- Tab navigation -->
 <ul class="nav admin-tab-nav" role="tablist">
     <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabFlags"><i class="bi bi-toggles me-1"></i>功能开关</a></li>
+    {% if current_user.role in ['admin', 'superadmin'] %}
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabUsers"><i class="bi bi-people me-1"></i>用户管理 <span class="badge bg-light text-dark ms-1">{{ user_count }}</span></a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAnn"><i class="bi bi-megaphone me-1"></i>公告管理</a></li>
+    {% endif %}
 </ul>
 
 <div class="tab-content">
@@ -231,6 +235,31 @@
                 <h6 class="mb-0 fw-bold"><i class="bi bi-people me-1"></i> 用户列表</h6>
                 <span class="badge bg-primary bg-opacity-10 text-primary">共 {{ user_count }} 人</span>
             </div>
+            <div class="card-body border-bottom">
+                <div class="user-create-grid">
+                    <div>
+                        <label class="form-label small fw-bold mb-1">用户名</label>
+                        <input class="form-control form-control-sm" id="newUserName" placeholder="username">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold mb-1">邮箱</label>
+                        <input class="form-control form-control-sm" id="newUserEmail" placeholder="user@example.com">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold mb-1">密码</label>
+                        <input class="form-control form-control-sm" id="newUserPassword" type="password" placeholder="至少 6 位">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold mb-1">权限</label>
+                        <select class="form-select form-select-sm" id="newUserRole">
+                            {% for key, label in role_labels.items() %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-primary" id="createUserBtn"><i class="bi bi-person-plus me-1"></i>添加用户</button>
+                </div>
+            </div>
             {% for u in users %}
             <div class="user-row">
                 <div class="user-avatar" style="background:{{ ['linear-gradient(135deg,#6366f1,#8b5cf6)','linear-gradient(135deg,#10b981,#34d399)','linear-gradient(135deg,#f59e0b,#fbbf24)','linear-gradient(135deg,#3b82f6,#60a5fa)','linear-gradient(135deg,#ec4899,#f472b6)','linear-gradient(135deg,#06b6d4,#22d3ee)'][loop.index0 % 6] }}">
@@ -238,16 +267,16 @@
                 </div>
                 <div class="user-meta">
                     <div class="user-name">{{ u.username }}</div>
-                    <div class="user-email">{{ u.email }} &middot; {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '-' }}</div>
+                    <div class="user-email">{{ u.email }} &middot; {{ u.created_at[:10] if u.created_at else '-' }}</div>
                 </div>
                 <div class="user-badges">
-                    {% if u.is_admin %}
-                    <span class="badge" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);font-size:.7rem">管理员</span>
-                    {% else %}
-                    <span class="badge bg-light text-dark" style="font-size:.7rem">用户</span>
-                    {% endif %}
+                    <select class="form-select form-select-sm user-role-select" data-uid="{{ u.id }}" style="width:104px;font-size:.72rem" {% if u.id == current_user.id %}disabled{% endif %}>
+                        {% for key, label in role_labels.items() %}
+                        <option value="{{ key }}" {% if u.role == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
                     <span class="badge {{ 'bg-success' if u.is_active else 'bg-danger' }}" style="font-size:.7rem">{{ '正常' if u.is_active else '已禁用' }}</span>
-                    {% if not u.is_admin %}
+                    {% if u.id != current_user.id %}
                     <button class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} btn-toggle-user"
                             data-uid="{{ u.id }}" data-name="{{ u.username }}" style="font-size:.72rem;padding:.2rem .5rem">
                         {{ '禁用' if u.is_active else '启用' }}
@@ -416,6 +445,53 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Toggle user active
+    var createUserBtn = document.getElementById('createUserBtn');
+    if (createUserBtn) {
+        createUserBtn.addEventListener('click', async function() {
+            var body = {
+                username: document.getElementById('newUserName').value,
+                email: document.getElementById('newUserEmail').value,
+                password: document.getElementById('newUserPassword').value,
+                role: document.getElementById('newUserRole').value,
+            };
+            this.disabled = true;
+            try {
+                var resp = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                });
+                var d = await resp.json();
+                if (!resp.ok || !d.ok) throw new Error(d.detail || '添加失败');
+                location.reload();
+            } catch(e) {
+                alert('添加用户失败：' + e.message);
+                this.disabled = false;
+            }
+        });
+    }
+
+    document.querySelectorAll('.user-role-select').forEach(function(select) {
+        select.addEventListener('change', async function() {
+            var uid = this.dataset.uid;
+            var role = this.value;
+            this.disabled = true;
+            try {
+                var resp = await fetch('/api/admin/users/' + uid + '/role', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({role: role}),
+                });
+                var d = await resp.json();
+                if (!resp.ok || !d.ok) throw new Error(d.detail || '更新失败');
+                location.reload();
+            } catch(e) {
+                alert('权限更新失败：' + e.message);
+                this.disabled = false;
+            }
+        });
+    });
+
     document.querySelectorAll('.btn-toggle-user').forEach(function(btn) {
         btn.addEventListener('click', async function() {
             var uid = this.dataset.uid;

@@ -18,12 +18,23 @@
 .ai-form .form-text{font-size:.74rem}
 .ai-custom-fields{display:none;border-top:1px dashed var(--panel-border);margin-top:.75rem;padding-top:.75rem}
 .ai-custom-fields.show{display:block}
-.auth-link-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;cursor:pointer;transition:all .15s;text-decoration:none}
+.auth-link-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .85rem;border-radius:.5rem;font-size:.82rem;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;cursor:pointer;transition:all .15s;text-decoration:none}
 .auth-link-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.3);color:#fff}
-.auth-link-btn i{font-size:.85rem}
+.auth-link-btn i{font-size:.9rem}
+.oauth-box{background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.04));border:1px solid rgba(99,102,241,.15);border-radius:.7rem;padding:1rem;margin-top:.5rem}
+.oauth-link-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+.oauth-link-input{flex:1;font-size:.78rem;padding:.4rem .6rem;border:1px solid var(--panel-border);border-radius:6px;background:var(--app-bg);color:var(--text-main);user-select:all}
+.oauth-copy-btn{font-size:.78rem;padding:.4rem .6rem;border-radius:6px;background:#6366f1;color:#fff;border:none;cursor:pointer;font-weight:700;transition:all .15s}
+.oauth-copy-btn:hover{background:#4f46e5}
+.oauth-step{font-size:.78rem;color:var(--text-sub);line-height:1.6}
+.oauth-step strong{color:var(--text-main)}
+.oauth-step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#6366f1;color:#fff;font-size:.68rem;font-weight:800;margin-right:.3rem}
 .api-key-wrap{position:relative}
 .api-key-wrap .paste-hint{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);font-size:.7rem;color:#94a3b8;pointer-events:none}
 .api-key-wrap input{padding-right:5rem}
+.oauth-redirect-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1rem;border-radius:.6rem;font-size:.85rem;font-weight:800;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;cursor:pointer;transition:all .2s;text-decoration:none}
+.oauth-redirect-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,.3);color:#fff}
+.oauth-redirect-btn i{font-size:1rem}
 </style>
 {% endblock %}
 
@@ -45,10 +56,6 @@
 
     <div class="ai-card ai-form">
         <h5><i class="bi bi-plus-circle me-1"></i>新增配置</h5>
-        <div id="authStepHint" class="mb-3" style="display:none;font-size:.82rem;padding:.6rem .85rem;border-radius:.5rem;background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.04));border:1px solid rgba(99,102,241,.12)">
-            <i class="bi bi-info-circle me-1 text-primary"></i>
-            <span id="authStepText"></span>
-        </div>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">模型厂商</label>
@@ -57,32 +64,59 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label">模型名称</label>
-                <input id="aiModel" class="form-control" placeholder="例如 gpt-4.1-mini / gemini-2.5-pro">
+                <input id="aiModel" class="form-control" list="aiModelOptions" placeholder="选择或输入模型名称">
+                <datalist id="aiModelOptions"></datalist>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Base URL</label>
                 <input id="aiBaseUrl" class="form-control" placeholder="自动填写，可修改">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6" id="authTypeCol">
                 <label class="form-label">认证方式</label>
                 <select id="aiAuthType" class="form-select">
                     <option value="api_key">API Key</option>
-                    <option value="oauth">OAuth</option>
                 </select>
             </div>
-            <div class="col-12">
+
+            <!-- API Key section (shown when auth_type=api_key) -->
+            <div class="col-12" id="apiKeySection">
                 <label class="form-label d-flex align-items-center gap-2">
                     API Key
                     <a id="getApiKeyBtn" class="auth-link-btn" href="#" target="_blank" rel="noopener" style="display:none">
-                        <i class="bi bi-box-arrow-up-right"></i> 获取 API Key
+                        <i class="bi bi-box-arrow-up-right"></i> <span id="getApiKeyBtnText">获取 API Key</span>
                     </a>
                 </label>
                 <div class="api-key-wrap">
-                    <input id="aiApiKey" class="form-control" type="password" placeholder="点击上方「获取 API Key」去厂商网站创建密钥，然后粘贴到这里">
+                    <input id="aiApiKey" class="form-control" type="password" placeholder="点击上方按钮去厂商网站创建密钥，然后粘贴到这里">
                     <span class="paste-hint">粘贴回填</span>
                 </div>
                 <div class="form-text" id="apiKeyHint"></div>
             </div>
+
+            <!-- OAuth section (shown when auth_type=oauth) -->
+            <div class="col-12" id="oauthSection" style="display:none">
+                <div class="oauth-box">
+                    <div class="oauth-link-row">
+                        <input id="oauthLinkInput" class="oauth-link-input" readonly>
+                        <button class="oauth-copy-btn" id="oauthCopyBtn"><i class="bi bi-clipboard me-1"></i>复制链接</button>
+                        <a class="oauth-redirect-btn" id="oauthRedirectBtn" href="#" target="_blank" rel="noopener">
+                            <i class="bi bi-box-arrow-up-right"></i> <span id="oauthRedirectText">去授权</span>
+                        </a>
+                    </div>
+                    <div class="oauth-step">
+                        <div><span class="oauth-step-num">1</span> <strong>复制授权链接</strong>或点击「去授权」直接跳转</div>
+                        <div><span class="oauth-step-num">2</span> 在厂商网站登录并授权</div>
+                        <div><span class="oauth-step-num">3</span> 复制授权后得到的 token / code / JSON，粘贴到下方保存</div>
+                    </div>
+                    <label class="form-label mt-3">授权结果 / 账号凭据</label>
+                    <textarea id="oauthTokenInput" class="form-control" rows="4" placeholder="把授权页面返回的 token、code 或 JSON 凭据粘贴到这里"></textarea>
+                    <div class="form-text">系统会加密保存；如果后续调用失败，会提示账号凭据错误并要求重新授权。</div>
+                    <div class="mt-2" style="font-size:.76rem;color:var(--text-sub)">
+                        <i class="bi bi-shield-check me-1"></i> OAuth 令牌安全存储在服务器端，不会暴露给浏览器
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12">
                 <div class="ai-custom-fields" id="customFields">
                     <div class="row g-3">
@@ -115,9 +149,18 @@
 document.addEventListener('DOMContentLoaded', function() {
     var providerSelect = document.getElementById('aiProvider');
     var authType = document.getElementById('aiAuthType');
+    var authTypeCol = document.getElementById('authTypeCol');
     var modelInput = document.getElementById('aiModel');
+    var modelOptions = document.getElementById('aiModelOptions');
     var baseUrlInput = document.getElementById('aiBaseUrl');
     var apiKeyInput = document.getElementById('aiApiKey');
+    var apiKeySection = document.getElementById('apiKeySection');
+    var oauthSection = document.getElementById('oauthSection');
+    var oauthLinkInput = document.getElementById('oauthLinkInput');
+    var oauthCopyBtn = document.getElementById('oauthCopyBtn');
+    var oauthRedirectBtn = document.getElementById('oauthRedirectBtn');
+    var oauthRedirectText = document.getElementById('oauthRedirectText');
+    var oauthTokenInput = document.getElementById('oauthTokenInput');
     var enabledCheck = document.getElementById('aiEnabled');
     var saveBtn = document.getElementById('aiSaveBtn');
     var hint = document.getElementById('aiHint');
@@ -127,12 +170,29 @@ document.addEventListener('DOMContentLoaded', function() {
     var customCallModel = document.getElementById('customCallModel');
     var customReqModel = document.getElementById('customReqModel');
     var getApiKeyBtn = document.getElementById('getApiKeyBtn');
+    var getApiKeyBtnText = document.getElementById('getApiKeyBtnText');
     var apiKeyHint = document.getElementById('apiKeyHint');
-    var authStepHint = document.getElementById('authStepHint');
-    var authStepText = document.getElementById('authStepText');
     var providerMeta = [];
 
+    var OAUTH_PROVIDERS = ['openai', 'gemini', 'anthropic', 'zhipu'];
+
+    var OAUTH_LINKS = {
+        openai: '/api/ai/oauth/openai',
+        gemini: '/api/ai/oauth/gemini',
+        anthropic: '/api/ai/oauth/anthropic',
+        zhipu: '/api/ai/oauth/zhipu'
+    };
+
+    var OAUTH_NAMES = {
+        openai: 'OpenAI',
+        gemini: 'Google Gemini',
+        anthropic: 'Claude',
+        zhipu: '智谱 GLM'
+    };
+
     function isCustom() { return providerSelect.value === 'custom'; }
+    function supportsOAuth() { return OAUTH_PROVIDERS.indexOf(providerSelect.value) !== -1; }
+    function isOAuth() { return authType.value === 'oauth'; }
 
     function fillProviderOptions() {
         var enabled = providerMeta.filter(function(p) { return p.enabled !== false; });
@@ -143,15 +203,54 @@ document.addEventListener('DOMContentLoaded', function() {
         providerSelect.innerHTML = html;
     }
 
+    function fillModelOptions(models) {
+        modelOptions.innerHTML = (models || []).map(function(model) {
+            return '<option value="' + model + '"></option>';
+        }).join('');
+    }
+
+    function updateAuthTypeOptions() {
+        if (isCustom()) {
+            authType.innerHTML = '<option value="api_key">API Key</option>';
+            authTypeCol.style.display = '';
+            return;
+        }
+        var html = '<option value="api_key">API Key</option>';
+        if (supportsOAuth()) {
+            html += '<option value="oauth">OAuth 授权登录</option>';
+        }
+        authType.innerHTML = html;
+        authType.value = 'api_key';
+    }
+
+    function toggleAuthSections() {
+        if (isOAuth() && supportsOAuth()) {
+            apiKeySection.style.display = 'none';
+            oauthSection.style.display = 'block';
+            var provider = providerSelect.value;
+            var link = window.location.origin + OAUTH_LINKS[provider];
+            oauthLinkInput.value = link;
+            oauthRedirectBtn.href = link;
+            oauthRedirectText.textContent = '去 ' + OAUTH_NAMES[provider] + ' 授权';
+            apiKeyHint.textContent = '';
+            getApiKeyBtn.style.display = 'none';
+        } else {
+            apiKeySection.style.display = 'block';
+            oauthSection.style.display = 'none';
+        }
+    }
+
     function updateProviderDefaults() {
         if (isCustom()) {
             customFields.classList.add('show');
+            fillModelOptions([]);
             baseUrlInput.placeholder = '输入自定义 API 地址';
             modelInput.placeholder = '输入模型名称';
             providerHint.textContent = '自定义厂商：填写 API 地址和模型名称';
             getApiKeyBtn.style.display = 'none';
-            authStepHint.style.display = 'none';
             apiKeyHint.textContent = '';
+            updateAuthTypeOptions();
+            toggleAuthSections();
             return;
         }
         customFields.classList.remove('show');
@@ -159,26 +258,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!meta) return;
         var prevBaseUrl = baseUrlInput.dataset.default || '';
         var prevModel = modelInput.dataset.default || '';
+        fillModelOptions(meta.models || []);
         if (!baseUrlInput.value || baseUrlInput.value === prevBaseUrl) baseUrlInput.value = meta.default_base_url || '';
         if (!modelInput.value || modelInput.value === prevModel) modelInput.value = meta.default_model || '';
-        authType.innerHTML = (meta.auth_types || ['api_key']).map(function(t) {
-            return '<option value="' + t + '">' + (t === 'oauth' ? 'OAuth' : 'API Key') + '</option>';
-        }).join('');
         baseUrlInput.dataset.default = meta.default_base_url || '';
         modelInput.dataset.default = meta.default_model || '';
-        providerHint.textContent = '推荐模型：' + (meta.default_model || '未设置') + '，默认接口：' + (meta.default_base_url || '未设置');
+        providerHint.textContent = '推荐模型：' + (meta.default_model || '未设置') + '，可选模型：' + ((meta.models || []).join(' / ') || '未设置');
 
-        if (meta.auth_url) {
+        updateAuthTypeOptions();
+        toggleAuthSections();
+
+        if (meta.auth_url && !isOAuth()) {
             getApiKeyBtn.href = meta.auth_url;
             getApiKeyBtn.style.display = 'inline-flex';
-            getApiKeyBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> 去 ' + meta.name + ' 获取 Key';
-            authStepText.innerHTML = '<strong>授权步骤：</strong>① 点击「去 ' + meta.name + ' 获取 Key」→ ② 在厂商网站登录并创建密钥 → ③ 复制密钥 → ④ 粘贴到下方 API Key 输入框 → ⑤ 保存';
-            authStepHint.style.display = 'block';
+            getApiKeyBtnText.textContent = '去 ' + meta.name + ' 获取 Key';
             apiKeyHint.textContent = '密钥创建后复制粘贴即可，安全存储在服务器端';
-        } else {
+        } else if (!isOAuth()) {
             getApiKeyBtn.style.display = 'none';
-            authStepHint.style.display = 'none';
-            apiKeyHint.textContent = '本地服务，无需 API Key';
+            apiKeyHint.textContent = meta.key === 'ollama' ? '本地服务，无需 API Key' : '';
         }
     }
 
@@ -186,11 +283,14 @@ document.addEventListener('DOMContentLoaded', function() {
         modelInput.value = '';
         baseUrlInput.value = '';
         apiKeyInput.value = '';
+        oauthTokenInput.value = '';
+        fillModelOptions([]);
         customCallModel.value = '';
         customReqModel.value = '';
         enabledCheck.checked = true;
         baseUrlInput.dataset.default = '';
         modelInput.dataset.default = '';
+        authType.value = 'api_key';
     }
 
     async function loadConfigs() {
@@ -217,8 +317,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var meta = providerMeta.find(function(p) { return p.key === c.provider; });
             if (meta) name = meta.name;
             else if (c.provider === 'custom') name = '自定义';
+            var authLabel = c.auth_type === 'oauth' ? '<span class="badge bg-info text-dark" style="font-size:.68rem">OAuth</span>' : '';
             return '<div class="ai-config-row">'
-                + '<span class="provider-name">' + name + '</span>'
+                + '<span class="provider-name">' + name + ' ' + authLabel + '</span>'
                 + '<span class="provider-model">' + (c.model || '未设置') + (c.has_api_key ? ' &middot; <i class="bi bi-key-fill text-success" title="已配置密钥"></i>' : ' &middot; <i class="bi bi-key text-warning" title="未配置密钥"></i>') + '</span>'
                 + '<span class="provider-status ' + (c.is_enabled ? 'on' : 'off') + '">' + (c.is_enabled ? '启用' : '禁用') + '</span>'
                 + '<div class="provider-actions">'
@@ -237,6 +338,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     modelInput.value = cfg.model || '';
                     baseUrlInput.value = cfg.base_url || '';
                     apiKeyInput.value = cfg.api_key || '';
+                    oauthTokenInput.value = cfg.oauth_token || '';
+                    if (provider === 'custom') {
+                        customCallModel.value = cfg.model || '';
+                    }
+                    if (cfg.auth_type === 'oauth' && supportsOAuth()) {
+                        authType.value = 'oauth';
+                        toggleAuthSections();
+                    }
                 }
             });
         });
@@ -254,7 +363,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     providerSelect.addEventListener('change', function() {
+        authType.value = 'api_key';
         updateProviderDefaults();
+    });
+
+    authType.addEventListener('change', function() {
+        toggleAuthSections();
+        if (!isOAuth()) {
+            var meta = providerMeta.find(function(p) { return p.key === providerSelect.value; });
+            if (meta && meta.auth_url) {
+                getApiKeyBtn.href = meta.auth_url;
+                getApiKeyBtn.style.display = 'inline-flex';
+                getApiKeyBtnText.textContent = '去 ' + meta.name + ' 获取 Key';
+                apiKeyHint.textContent = '密钥创建后复制粘贴即可，安全存储在服务器端';
+            }
+        }
+    });
+
+    oauthCopyBtn.addEventListener('click', function() {
+        oauthLinkInput.select();
+        navigator.clipboard.writeText(oauthLinkInput.value).then(function() {
+            oauthCopyBtn.innerHTML = '<i class="bi bi-check me-1"></i>已复制';
+            setTimeout(function() { oauthCopyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>复制链接'; }, 2000);
+        }).catch(function() {
+            document.execCommand('copy');
+            oauthCopyBtn.innerHTML = '<i class="bi bi-check me-1"></i>已复制';
+        });
     });
 
     saveBtn.addEventListener('click', async function() {
@@ -266,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
             auth_type: authType.value,
             model: isCustom() ? (customCallModel.value || modelInput.value) : modelInput.value,
             api_key: apiKeyInput.value,
+            oauth_token: oauthTokenInput.value,
             base_url: baseUrlInput.value,
             is_enabled: enabledCheck.checked,
         };

@@ -162,9 +162,9 @@
         $('#beautifyBtn').addEventListener('click', beautifyDiagram);
         $('#undoBtn').addEventListener('click', undoChange);
         $('#redoBtn').addEventListener('click', redoChange);
-        $('#zoomOutBtn').addEventListener('click', () => setZoom(state.zoom - 0.1));
+        $('#zoomOutBtn').addEventListener('click', () => setZoom(state.zoom / 1.18));
         $('#zoomFitBtn').addEventListener('click', fitCanvas);
-        $('#zoomInBtn').addEventListener('click', () => setZoom(state.zoom + 0.1));
+        $('#zoomInBtn').addEventListener('click', () => setZoom(state.zoom * 1.18));
         $('#duplicateBtn').addEventListener('click', duplicateSelected);
         $('#aiGenerateBtn').addEventListener('click', generateDiagramFromAiPrompt);
 
@@ -339,17 +339,8 @@
         stageWrap.addEventListener('wheel', (event) => {
             if (!event.ctrlKey && !event.metaKey) return;
             event.preventDefault();
-            const rect = stageWrap.getBoundingClientRect();
-            const focus = clientToSvg({
-                clientX: event.clientX || (rect.left + rect.width / 2),
-                clientY: event.clientY || (rect.top + rect.height / 2)
-            });
-            setZoom(state.zoom + (event.deltaY < 0 ? 0.08 : -0.08), false);
-            requestAnimationFrame(() => {
-                stageWrap.scrollLeft = Math.max(0, focus.x * state.zoom - stageWrap.clientWidth / 2);
-                stageWrap.scrollTop = Math.max(0, focus.y * state.zoom - stageWrap.clientHeight / 2);
-                setStatus('缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
-            });
+            const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+            setZoom(state.zoom * factor, true, { clientX: event.clientX, clientY: event.clientY });
         }, { passive: false });
     }
 
@@ -1260,6 +1251,90 @@
                     ['paper', '论文撰写'],
                     ['terminator', '投稿']
                 ]
+            },
+            flowchart: {
+                label: '标准流程图模板',
+                direction: 'TB',
+                items: [
+                    ['terminator', '开始'],
+                    ['data', '输入数据'],
+                    ['process', '处理步骤'],
+                    ['decision', '是否满足条件'],
+                    ['process', '执行分支任务'],
+                    ['document', '生成结果'],
+                    ['terminator', '结束']
+                ]
+            },
+            mindmap: {
+                label: '思维导图模板',
+                direction: 'LR',
+                items: [
+                    ['model', '中心主题'],
+                    ['process', '研究背景', 0],
+                    ['process', '核心问题', 0],
+                    ['process', '方法路线', 0],
+                    ['process', '实验验证', 0],
+                    ['note', '相关工作', 1],
+                    ['note', '应用场景', 1],
+                    ['note', '指标定义', 2],
+                    ['note', '数据来源', 3],
+                    ['note', '结果分析', 4]
+                ]
+            },
+            sequence: {
+                label: 'UML 时序图模板',
+                direction: 'LR',
+                items: [
+                    ['actor', '用户'],
+                    ['web', '前端页面'],
+                    ['api', 'API 网关'],
+                    ['service', '业务服务'],
+                    ['database', '数据库'],
+                    ['message', '请求登录'],
+                    ['message', '校验参数'],
+                    ['message', '查询账号'],
+                    ['message', '返回结果']
+                ]
+            },
+            classDiagram: {
+                label: 'UML 类图模板',
+                direction: 'LR',
+                items: [
+                    ['class', 'User\n- id\n- email\n+ login()'],
+                    ['class', 'Project\n- id\n- title\n+ addMember()'],
+                    ['class', 'Diagram\n- id\n- xml\n+ export()'],
+                    ['interface', 'AIProvider\n+ generate()'],
+                    ['component', 'AuthService'],
+                    ['component', 'DiagramService']
+                ]
+            },
+            er: {
+                label: 'ER 图模板',
+                direction: 'LR',
+                items: [
+                    ['database', '用户 User'],
+                    ['database', '项目 Project', 0],
+                    ['database', '图表 Diagram', 1],
+                    ['database', 'AI配置 AIConfig', 0],
+                    ['tag', '1:N 拥有', 0],
+                    ['tag', '1:N 包含', 1]
+                ]
+            },
+            network: {
+                label: '网络拓扑模板',
+                direction: 'LR',
+                items: [
+                    ['person', '客户端'],
+                    ['firewall', '防火墙', 0],
+                    ['loadBalancer', '负载均衡', 1],
+                    ['gateway', 'API 网关', 2],
+                    ['server', '应用服务器 A', 3],
+                    ['server', '应用服务器 B', 3],
+                    ['cache', '缓存', 3],
+                    ['database', '主数据库', 4],
+                    ['database', '备份数据库', 4],
+                    ['monitor', '监控告警', 4]
+                ]
             }
         };
         const spec = templates[name] || templates.ml;
@@ -1268,9 +1343,10 @@
 
     function generateDiagramFromAiPrompt() {
         const input = $('#aiPromptInput');
-        const prompt = input ? input.value.trim() : '';
-        if (!prompt) {
-            setStatus('请先输入想要的流程图描述', 'busy');
+        const typeSelect = $('#aiDiagramType');
+        const promptText = input ? input.value.trim() : '';
+        if (!promptText) {
+            setStatus('请先输入想要的图表描述', 'busy');
             return;
         }
         if (!state.aiConfig) {
@@ -1278,6 +1354,8 @@
             return;
         }
         const providerName = state.aiConfig.provider || 'AI';
+        const diagramType = typeSelect && typeSelect.value !== 'auto' ? typeSelect.value : 'auto';
+        const prompt = diagramType === 'auto' ? promptText : ('图表类型：' + diagramType + '\n' + promptText);
         setStatus('正在请求 ' + providerName + ' 生成图表…', 'busy');
         const generateBtn = $('#aiGenerateBtn');
         if (generateBtn) { generateBtn.disabled = true; generateBtn.textContent = 'AI 绘制中…'; }
@@ -1443,8 +1521,18 @@
             return node;
         });
         state.local.edges = [];
-        for (let index = 0; index < state.local.nodes.length - 1; index += 1) {
-            state.local.edges.push(makeEdge(state.local.nodes[index].id, state.local.nodes[index + 1].id));
+        const hasExplicitParents = items.some((item) => Number.isInteger(item[2]));
+        if (hasExplicitParents) {
+            items.forEach((item, index) => {
+                if (!Number.isInteger(item[2])) return;
+                const source = state.local.nodes[item[2]];
+                const target = state.local.nodes[index];
+                if (source && target) state.local.edges.push(makeEdge(source.id, target.id));
+            });
+        } else {
+            for (let index = 0; index < state.local.nodes.length - 1; index += 1) {
+                state.local.edges.push(makeEdge(state.local.nodes[index].id, state.local.nodes[index + 1].id));
+            }
         }
         state.local.backgrounds = [];
         selectNone();
@@ -1453,33 +1541,66 @@
         setStatus('已套用：' + (label || '模板'), 'ok');
     }
 
-    function setZoom(value, showStatus) {
-        const oldZoom = state.zoom || 1;
-        const centerX = (stageWrap.scrollLeft + stageWrap.clientWidth / 2) / oldZoom;
-        const centerY = (stageWrap.scrollTop + stageWrap.clientHeight / 2) / oldZoom;
-        state.zoom = clamp(Math.round(value * 100) / 100, 0.35, 2.5);
+    function canvasBaseSize() {
         const bounds = getDiagramBounds();
-        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
-        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
-        canvas.style.width = Math.round(width * state.zoom) + 'px';
-        canvas.style.height = Math.round(height * state.zoom) + 'px';
+        return {
+            width: Math.max(CANVAS_MIN_WIDTH, bounds.maxX + CANVAS_PADDING),
+            height: Math.max(CANVAS_MIN_HEIGHT, bounds.maxY + CANVAS_PADDING)
+        };
+    }
+
+    function viewportPointToCanvasPoint(anchor) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = anchor && Number.isFinite(anchor.clientX) ? anchor.clientX : (stageWrap.getBoundingClientRect().left + stageWrap.clientWidth / 2);
+        const clientY = anchor && Number.isFinite(anchor.clientY) ? anchor.clientY : (stageWrap.getBoundingClientRect().top + stageWrap.clientHeight / 2);
+        const x = (clientX - rect.left) / Math.max(0.01, state.zoom || 1);
+        const y = (clientY - rect.top) / Math.max(0.01, state.zoom || 1);
+        const offsetX = clientX - stageWrap.getBoundingClientRect().left;
+        const offsetY = clientY - stageWrap.getBoundingClientRect().top;
+        return { x, y, offsetX, offsetY };
+    }
+
+    function applyZoomedCanvasSize() {
+        const size = canvasBaseSize();
+        canvas.setAttribute('width', String(Math.round(size.width)));
+        canvas.setAttribute('height', String(Math.round(size.height)));
+        canvas.setAttribute('viewBox', '0 0 ' + Math.round(size.width) + ' ' + Math.round(size.height));
+        canvas.style.width = Math.round(size.width * state.zoom) + 'px';
+        canvas.style.height = Math.round(size.height * state.zoom) + 'px';
+    }
+
+    function setZoom(value, showStatus, anchor) {
+        const before = viewportPointToCanvasPoint(anchor);
+        state.zoom = clamp(Math.round(value * 1000) / 1000, 0.12, 4);
+        applyZoomedCanvasSize();
         requestAnimationFrame(() => {
-            stageWrap.scrollLeft = Math.max(0, centerX * state.zoom - stageWrap.clientWidth / 2);
-            stageWrap.scrollTop = Math.max(0, centerY * state.zoom - stageWrap.clientHeight / 2);
+            stageWrap.scrollLeft = Math.max(0, before.x * state.zoom - before.offsetX);
+            stageWrap.scrollTop = Math.max(0, before.y * state.zoom - before.offsetY);
             if (showStatus !== false) setStatus('缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
         });
     }
 
     function fitCanvas() {
         const bounds = getDiagramBounds();
-        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
-        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
-        const zoomX = (stageWrap.clientWidth - 24) / width;
-        const zoomY = (stageWrap.clientHeight - 24) / height;
-        setZoom(Math.min(1, zoomX, zoomY), false);
-        requestAnimationFrame(() => {
+        if (!state.local.nodes.length && !state.local.backgrounds.length) {
+            setZoom(1, false);
             stageWrap.scrollLeft = 0;
             stageWrap.scrollTop = 0;
+            setStatus('画布为空，已恢复 100%', 'ok');
+            return;
+        }
+        const margin = 56;
+        const contentWidth = Math.max(80, bounds.maxX - bounds.minX);
+        const contentHeight = Math.max(60, bounds.maxY - bounds.minY);
+        const zoomX = Math.max(0.05, (stageWrap.clientWidth - margin * 2) / contentWidth);
+        const zoomY = Math.max(0.05, (stageWrap.clientHeight - margin * 2) / contentHeight);
+        state.zoom = clamp(Math.min(zoomX, zoomY), 0.12, 2.2);
+        applyZoomedCanvasSize();
+        requestAnimationFrame(() => {
+            const contentCenterX = (bounds.minX + bounds.maxX) / 2;
+            const contentCenterY = (bounds.minY + bounds.maxY) / 2;
+            stageWrap.scrollLeft = Math.max(0, contentCenterX * state.zoom - stageWrap.clientWidth / 2);
+            stageWrap.scrollTop = Math.max(0, contentCenterY * state.zoom - stageWrap.clientHeight / 2);
             setStatus('已适应画布，缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
         });
     }
@@ -1625,11 +1746,7 @@
     }
 
     function updateCanvasSize() {
-        const bounds = getDiagramBounds();
-        const width = Math.max(CANVAS_MIN_WIDTH, bounds.maxX - bounds.minX + CANVAS_PADDING * 2);
-        const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
-        canvas.style.width = Math.round(width * state.zoom) + 'px';
-        canvas.style.height = Math.round(height * state.zoom) + 'px';
+        applyZoomedCanvasSize();
     }
 
     function semanticNodeColor(node) {
@@ -3526,12 +3643,12 @@
     }
 
     function clientToSvg(event) {
-        const rect = stageWrap.getBoundingClientRect();
-        const zoom = state.zoom || 1;
-        const scrollX = stageWrap.scrollLeft || 0;
-        const scrollY = stageWrap.scrollTop || 0;
-        const x = (event.clientX - rect.left + scrollX) / zoom;
-        const y = (event.clientY - rect.top + scrollY) / zoom;
+        const rect = canvas.getBoundingClientRect();
+        const viewBox = canvas.viewBox && canvas.viewBox.baseVal;
+        const width = viewBox && viewBox.width ? viewBox.width : (parseFloat(canvas.getAttribute('width')) || CANVAS_MIN_WIDTH);
+        const height = viewBox && viewBox.height ? viewBox.height : (parseFloat(canvas.getAttribute('height')) || CANVAS_MIN_HEIGHT);
+        const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+        const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * height;
         return { x: x, y: y };
     }
 

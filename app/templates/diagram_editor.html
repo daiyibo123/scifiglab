@@ -62,7 +62,7 @@
 .stage-wrap.dragover{background:#eef2ff}
 
 /* ---- Infinite Canvas ---- */
-.diagram-canvas{display:block;min-width:2000px;min-height:1500px;background:#fff;background-image:linear-gradient(#edf2f7 1px,transparent 1px),linear-gradient(90deg,#edf2f7 1px,transparent 1px);background-size:24px 24px;box-shadow:0 0 0 1px #dbe3ee,0 18px 40px rgba(15,23,42,.08);border-radius:6px}
+.diagram-canvas{display:block;background:#fff;background-image:linear-gradient(#edf2f7 1px,transparent 1px),linear-gradient(90deg,#edf2f7 1px,transparent 1px);background-size:24px 24px;box-shadow:0 0 0 1px #dbe3ee,0 18px 40px rgba(15,23,42,.08);border-radius:6px}
 
 .diagram-node{cursor:move}
 .diagram-node .node-shape{transition:filter .12s,stroke-width .12s}
@@ -280,7 +280,7 @@
             <button class="shape-tool" draggable="true" data-shape="model" title="模型"><i class="bi bi-cpu"></i><span>模型</span></button>
             <button class="shape-tool" draggable="true" data-shape="training" title="训练"><i class="bi bi-activity"></i><span>训练</span></button>
             <button class="shape-tool" draggable="true" data-shape="evaluation" title="评估"><i class="bi bi-clipboard-data"></i><span>评估</span></button>
-            <button class="shape-tool" draggable="true" data-shape="experiment" title="实验"><i class="bi bi-beaker"></i><span>实验</span></button>
+            <button class="shape-tool" draggable="true" data-shape="experiment" title="实验"><i class="bi bi-flask"></i><span>实验</span></button>
             <button class="shape-tool" draggable="true" data-shape="metric" title="指标"><i class="bi bi-graph-up"></i><span>指标</span></button>
             <button class="shape-tool" draggable="true" data-shape="paper" title="论文输出"><i class="bi bi-journal-text"></i><span>论文</span></button>
             <button class="shape-tool" draggable="true" data-shape="code" title="代码模块"><i class="bi bi-code-square"></i><span>代码</span></button>
@@ -332,7 +332,7 @@
             <button class="shape-tool" draggable="true" data-shape="class" title="类（UML）"><i class="bi bi-diagram-3"></i><span>类</span></button>
             <button class="shape-tool" draggable="true" data-shape="interface" title="接口（UML）"><i class="bi bi-diagram-2"></i><span>接口</span></button>
             <button class="shape-tool" draggable="true" data-shape="component" title="组件（UML）"><i class="bi bi-puzzle-piece"></i><span>组件</span></button>
-            <button class="shape-tool" draggable="true" data-shape="actor" title="参与者（用例）"><i class="bi bi-person-standing"></i><span>参与者</span></button>
+            <button class="shape-tool" draggable="true" data-shape="actor" title="参与者（用例）"><i class="bi bi-person"></i><span>参与者</span></button>
             <button class="shape-tool" draggable="true" data-shape="usecase" title="用例"><i class="bi bi-play-circle"></i><span>用例</span></button>
             <button class="shape-tool" draggable="true" data-shape="note" title="注释"><i class="bi bi-sticky"></i><span>注释</span></button>
             <button class="shape-tool" draggable="true" data-shape="package" title="包"><i class="bi bi-box-seam"></i><span>包</span></button>
@@ -340,9 +340,9 @@
 
         <!-- DevOps -->
         <div class="shape-group" data-shape-group="devops">
-            <button class="shape-tool" draggable="true" data-shape="pipeline" title="流水线"><i class="bi bi-chevron-double-right-alt"></i><span>流水线</span></button>
+            <button class="shape-tool" draggable="true" data-shape="pipeline" title="流水线"><i class="bi bi-chevron-double-right"></i><span>流水线</span></button>
             <button class="shape-tool" draggable="true" data-shape="cron" title="定时任务 / Cron"><i class="bi bi-calendar-check"></i><span>定时任务</span></button>
-            <button class="shape-tool" draggable="true" data-shape="gitBranch" title="Git 分支"><i class="bi bi-git-branch"></i><span>分支</span></button>
+            <button class="shape-tool" draggable="true" data-shape="gitBranch" title="Git 分支"><i class="bi bi-diagram-2"></i><span>分支</span></button>
             <button class="shape-tool" draggable="true" data-shape="docker" title="Docker 容器"><i class="bi bi-box-seam"></i><span>Docker</span></button>
             <button class="shape-tool" draggable="true" data-shape="monitor" title="监控 / Prometheus"><i class="bi bi-activity"></i><span>监控</span></button>
             <button class="shape-tool" draggable="true" data-shape="alert" title="告警"><i class="bi bi-exclamation-diamond"></i><span>告警</span></button>
@@ -373,6 +373,12 @@
             <button class="template-tool" data-template="api" title="用户、API、模型、数据库、输出"><i class="bi bi-hdd-network"></i><span>API 服务</span></button>
             <button class="template-tool" data-template="experiment" title="实验设计、变量、结果、指标"><i class="bi bi-beaker"></i><span>实验流程</span></button>
             <button class="template-tool" data-template="paper" title="阅读、假设、实验、图表、论文"><i class="bi bi-journal-text"></i><span>论文产出</span></button>
+            <button class="template-tool" data-template="flowchart" title="开始、处理、判断、结束"><i class="bi bi-diagram-2"></i><span>标准流程图</span></button>
+            <button class="template-tool" data-template="mindmap" title="中心主题、一级分支、二级节点"><i class="bi bi-flower1"></i><span>思维导图</span></button>
+            <button class="template-tool" data-template="sequence" title="参与者、请求、响应、回调"><i class="bi bi-arrow-left-right"></i><span>时序图</span></button>
+            <button class="template-tool" data-template="classDiagram" title="类、接口、继承、依赖"><i class="bi bi-diagram-3"></i><span>类图</span></button>
+            <button class="template-tool" data-template="er" title="实体、属性、关系"><i class="bi bi-database"></i><span>ER 图</span></button>
+            <button class="template-tool" data-template="network" title="客户端、网关、服务、网络、数据库"><i class="bi bi-router"></i><span>网络拓扑</span></button>
         </div>
 
         <div class="palette-sep"></div>
@@ -424,7 +430,7 @@
                         可编辑导入：本地 XML、draw.io 未压缩 XML、Mermaid、JSON、SVG 基础形状、Visio XML(VDX)、基础 VSDX。复杂 VSDX/PDF/位图会尽量转换，无法完整还原时会作为参考底图导入。
                     </div>
                     <div class="import-zone" id="fileDropZone">
-                        <i class="bi bi-file-earrow-arrow-up"></i>
+                        <i class="bi bi-file-earmark-arrow-up"></i>
                         <p><strong>拖拽文件到此处</strong> 或 <a href="#" id="fileBrowseLink">点击选择</a></p>
                         <small>支持 .drawio / .xml / .svg / .json / .mmd / .mermaid / .vdx / .vsdx</small>
                         <input type="file" id="fileInput" accept=".drawio,.xml,.svg,.json,.mmd,.mermaid,.vdx,.vsdx" style="display:none">
@@ -467,15 +473,26 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header" style="background:linear-gradient(135deg,#4f46e5,#0f766e);color:#fff">
-                <h5 class="modal-title"><i class="bi-stars me-2"></i>AI 绘制流程图</h5>
+                <h5 class="modal-title"><i class="bi bi-stars me-2"></i>AI 绘制图表</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="ai-note mb-3">
                     支持流程图、架构图、UML 时序图/类图、ER 图、思维导图、网络拓扑图等多种图表类型。AI 会直接生成可编辑的完整图表，绘制过程有动画模拟。
                 </div>
-                <label for="aiPromptInput" class="form-label fw-bold">描述你想要的流程图</label>
-                <textarea id="aiPromptInput" class="form-control ai-prompt-box" placeholder="例如：画一个从数据采集、清洗、模型训练、评估到论文输出的流程图，包含异常分支"></textarea>
+                <label for="aiDiagramType" class="form-label fw-bold">图表类型</label>
+                <select id="aiDiagramType" class="form-select mb-3">
+                    <option value="auto">自动判断</option>
+                    <option value="flowchart">流程图</option>
+                    <option value="architecture">架构图</option>
+                    <option value="uml-sequence">UML 时序图</option>
+                    <option value="uml-class">UML 类图</option>
+                    <option value="er">ER 图</option>
+                    <option value="mindmap">思维导图</option>
+                    <option value="network">网络拓扑图</option>
+                </select>
+                <label for="aiPromptInput" class="form-label fw-bold">描述你想要的图表</label>
+                <textarea id="aiPromptInput" class="form-control ai-prompt-box" placeholder="例如：画一个用户登录系统的 UML 时序图；或画一个科研项目思维导图；或画一个微服务网络拓扑图"></textarea>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
@@ -496,5 +513,5 @@ window.DIAGRAM_EDITOR_CONFIG = {
     initialTemplate: {{ initial_template|default('', true)|tojson }}
 };
 </script>
-<script src="{{ url_for('static', path='js/diagram_editor.js') }}?v=20260505-infinite-canvas-v2"></script>
+<script src="{{ url_for('static', path='js/diagram_editor.js') }}?v=20260505-zoom-fit-v4"></script>
 {% endblock %}

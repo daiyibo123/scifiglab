@@ -1,13 +1,15 @@
 """Admin router — initialization, feature toggles, user management, announcements."""
 
 import os
+import json
+import re
 import signal
 import subprocess
 import threading
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -31,13 +33,129 @@ router = APIRouter(tags=["admin"])
 api_router = APIRouter(tags=["admin-api"])
 
 AI_PROVIDERS = [
-    {"key": "openai", "name": "OpenAI", "default_base_url": "https://api.openai.com/v1", "default_model": "gpt-4.1-mini", "auth_types": ["api_key", "oauth"], "auth_url": "https://platform.openai.com/api-keys"},
-    {"key": "gemini", "name": "Gemini", "default_base_url": "https://generativelanguage.googleapis.com/v1beta", "default_model": "gemini-2.5-pro", "auth_types": ["api_key", "oauth"], "auth_url": "https://aistudio.google.com/apikey"},
-    {"key": "anthropic", "name": "Anthropic", "default_base_url": "https://api.anthropic.com/v1", "default_model": "claude-3-7-sonnet-latest", "auth_types": ["api_key"], "auth_url": "https://console.anthropic.com/settings/keys"},
-    {"key": "qwen", "name": "通义千问", "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "default_model": "qwen-plus", "auth_types": ["api_key"], "auth_url": "https://dashscope.console.aliyun.com/apiKey"},
-    {"key": "zhipu", "name": "智谱", "default_base_url": "https://open.bigmodel.cn/api/paas/v4", "default_model": "glm-4.5", "auth_types": ["api_key"], "auth_url": "https://open.bigmodel.cn/usercenter/apikeys"},
-    {"key": "deepseek", "name": "DeepSeek", "default_base_url": "https://api.deepseek.com/v1", "default_model": "deepseek-chat", "auth_types": ["api_key"], "auth_url": "https://platform.deepseek.com/api_keys"},
-    {"key": "ollama", "name": "Ollama", "default_base_url": "http://localhost:11434/v1", "default_model": "llama3.1", "auth_types": ["api_key"], "auth_url": ""},
+    {
+        "key": "openai",
+        "name": "OpenAI",
+        "default_base_url": "https://api.openai.com/v1",
+        "models": [
+            "gpt-4.1", "gpt-4o", "gpt-4o-mini", 
+            "gpt-5", "gpt-5-mini", "gpt-5.2", "gpt-5.2-Codex", 
+            "gpt-5.4", "gpt-5.4-fast", "gpt-5.5", "gpt-5.5-pro"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": True,
+    },
+    {
+        "key": "gemini",
+        "name": "Gemini",
+        "default_base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "models": [
+            "gemini-2.5-pro", "gemini-2.5-flash", 
+            "gemini-3.0-pro", "gemini-3.0-flash", "gemini-3.1-pro-preview"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": True,
+    },
+    {
+        "key": "anthropic",
+        "name": "Claude",
+        "default_base_url": "https://api.anthropic.com/v1",
+        "models": [
+            "claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest", 
+            "claude-3-5-haiku-latest", "claude-3-opus-latest", 
+            "claude-4-sonnet", "claude-4-opus"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": True,
+    },
+    {
+        "key": "qwen",
+        "name": "通义千问",
+        "default_base_url": "https://dashscope.aliyuncs.com/api/v1",
+        "models": [
+            "qwen-max", "qwen-plus", "qwen-turbo", "qwen-long", 
+            "qwen-vl-max", "qwen-vl-plus", 
+            "qwen2.5-72B-instruct", "qwen2.5-32B-instruct", 
+            "qwen3-235B-A22B", "qwen3-max", "qwen3.5-397B-A17B", 
+            "qwen-deep-research", "qwen-math-plus", "qwen-omni-turbo"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": False,
+    },
+    {
+        "key": "zhipu",
+        "name": "智谱 GLM",
+        "default_base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "models": [
+            "glm-4.5", "glm-4-plus", "glm-4-flash", 
+            "glm-5", "glm-5-plus", "glm-5-flash"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": True,
+    },
+    {
+        "key": "deepseek",
+        "name": "DeepSeek",
+        "default_base_url": "https://api.deepseek.com",
+        "models": [
+            "deepseek-chat", "deepseek-reasoner", 
+            "deepseek-v3", "deepseek-v3.1", "deepseek-v3.2", 
+            "deepseek-v4-pro", "deepseek-v4-flash"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": False,
+    },
+    {
+        "key": "nvidia",
+        "name": "NVIDIA",
+        "default_base_url": "https://api.nvidia.com/v1",
+        "models": [
+            "nvidia/llama-3.1-nemotron-70b-instruct", 
+            "meta/llama-3.1-405b-instruct", 
+            "meta/llama-3.1-70b-instruct", 
+            "mistralai/mixtral-8x7b-instruct-v0.1", 
+            "nvidia/nemotron-5-340b", "nvidia/llama-4-500b", 
+            "nvidia/mistral-large-2-instruct", "nvidia/codellama-70b", 
+            "nvidia/llama-3.3-nemotron-super-49b-v1", 
+            "nvidia/llama-3.1-nemotron-ultra-253B-v1", 
+            "nvidia/deepseek-v4-pro"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": False,
+    },
+    {
+        "key": "xiaomi",
+        "name": "Xiaomi",
+        "default_base_url": "https://api.xiaomi-ai.com/v1",
+        "models": [
+            "MiMo-2.5-7B", "MiMo-2.5-VL-7B", "xiaomi-mimo-2.5", 
+            "MiMo-2.5-10B", "MiMo-2.5-VL-10B", "MiMo-V2.5-Pro"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": False,
+    },
+    {
+        "key": "ollama",
+        "name": "Ollama",
+        "default_base_url": "http://localhost:11434/api",
+        "models": [
+            "llama3.1", "llama3.2", "qwen2.5", "deepseek-r1", 
+            "mistral", "gemma2", "llama4", "qwen3"
+        ],
+        "auth_type": "none",
+        "supports_oauth": False,
+    },
+    {
+        "key": "gemma",
+        "name": "Gemma",
+        "default_base_url": "https://api.gemma.com/v1",
+        "models": [
+            "gemma-2-27b-it", "gemma-3-12b-it", "gemma-4-31b-it", 
+            "gemma-3n-e2b-it", "gemma-3n-e4b-it"
+        ],
+        "auth_type": "api_key",
+        "supports_oauth": False,
+    },
 ]
 
 AI_PROVIDER_FLAG_KEYS = [
@@ -47,7 +165,10 @@ AI_PROVIDER_FLAG_KEYS = [
     "ai_provider_qwen_enabled",
     "ai_provider_zhipu_enabled",
     "ai_provider_deepseek_enabled",
+    "ai_provider_nvidia_enabled",
+    "ai_provider_xiaomi_enabled",
     "ai_provider_ollama_enabled",
+    "ai_provider_gemma_enabled",
 ]
 
 
@@ -87,6 +208,7 @@ def _set_config(db: Session, key: str, value: str, description: str = ""):
 
 
 def _ai_config_to_dict(cfg: UserAIConfig) -> dict:
+    secret = decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else ""
     return {
         "id": cfg.id,
         "provider": cfg.provider,
@@ -94,9 +216,30 @@ def _ai_config_to_dict(cfg: UserAIConfig) -> dict:
         "model": cfg.model,
         "base_url": cfg.base_url,
         "is_enabled": cfg.is_enabled,
-        "api_key": decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
+        "api_key": secret if cfg.auth_type == "api_key" else "",
+        "oauth_token": secret if cfg.auth_type == "oauth" else "",
         "has_api_key": bool(cfg.api_key_enc),
+        "has_oauth_token": cfg.auth_type == "oauth" and bool(cfg.api_key_enc),
     }
+
+
+def _extract_ai_credential(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    if value.startswith("{"):
+        try:
+            data = json.loads(value)
+            for key in ("access_token", "api_key", "key", "token", "refresh_token", "id_token"):
+                token = data.get(key)
+                if isinstance(token, str) and token.strip():
+                    return token.strip()
+        except Exception:
+            pass
+    match = re.search(r"(?:access_token|api_key|key|token|code)=([^&\s]+)", value)
+    if match:
+        return match.group(1).strip()
+    return value
 
 
 def _user_to_dict(user: User) -> dict:
@@ -147,7 +290,10 @@ DEFAULT_FLAGS = {
     "ai_provider_qwen_enabled": ("true", "启用通义千问厂商"),
     "ai_provider_zhipu_enabled": ("true", "启用智谱厂商"),
     "ai_provider_deepseek_enabled": ("true", "启用 DeepSeek 厂商"),
+    "ai_provider_nvidia_enabled": ("true", "启用 NVIDIA 厂商"),
+    "ai_provider_xiaomi_enabled": ("true", "启用 Xiaomi 厂商"),
     "ai_provider_ollama_enabled": ("false", "启用 Ollama 厂商"),
+    "ai_provider_gemma_enabled": ("false", "启用 Gemma 厂商"),
 }
 
 
@@ -236,6 +382,7 @@ class AIConfigUpsertRequest(BaseModel):
     auth_type: str = "api_key"
     model: str = ""
     api_key: str = ""
+    oauth_token: str = ""
     base_url: str = ""
     request_model: Optional[str] = None
     is_enabled: bool = True
@@ -254,6 +401,66 @@ def ai_settings_page(
         "title": "AI 设置",
         "current_user": current_user,
     })
+
+
+@api_router.get("/api/ai/oauth/{provider}")
+def api_ai_oauth_start(
+    provider: str,
+    current_user: User = Depends(get_current_user),
+):
+    provider = provider.strip().lower()
+    provider_meta = next((p for p in AI_PROVIDERS if p["key"] == provider), None)
+    if not provider_meta or "oauth" not in provider_meta.get("auth_types", []):
+        raise HTTPException(status_code=404, detail="该厂商不支持 OAuth")
+
+    client_id = os.environ.get(f"{provider.upper()}_OAUTH_CLIENT_ID", "").strip()
+    redirect_uri = os.environ.get(f"{provider.upper()}_OAUTH_REDIRECT_URI", "").strip()
+    if not client_id or not redirect_uri:
+        provider_name = provider_meta["name"]
+        fallback_url = provider_meta.get("auth_url") or "#"
+        return HTMLResponse(
+            f"""
+            <html><head><meta charset="utf-8"><title>{provider_name} OAuth</title></head>
+            <body style="font-family:system-ui;padding:32px;line-height:1.7">
+                <h2>{provider_name} 账号授权</h2>
+                <p>当前没有配置专用 OAuth Client，因此先使用手动授权/账号凭据导入模式：</p>
+                <ol>
+                    <li>打开 <a href="{fallback_url}" target="_blank" rel="noopener">{provider_name} 授权/密钥页面</a> 登录账号。</li>
+                    <li>复制页面返回的 token / code / JSON 凭据。</li>
+                    <li>回到 SciFigLab 的 AI 设置，在 OAuth 模式下粘贴到「授权结果」输入框并保存。</li>
+                </ol>
+                <p>如果后续凭据失效，调用时会提示账号凭据错误，重新授权即可。</p>
+                <hr>
+                <p>如果你要改成自动跳转回调模式，需要配置：</p>
+                <pre>{provider.upper()}_OAUTH_CLIENT_ID=你的客户端ID
+{provider.upper()}_OAUTH_REDIRECT_URI=你的回调地址</pre>
+            </body></html>
+            """
+        )
+
+    from urllib.parse import urlencode
+    auth_urls = {
+        "openai": "https://auth.openai.com/oauth/authorize",
+        "gemini": "https://accounts.google.com/o/oauth2/v2/auth",
+        "anthropic": "https://console.anthropic.com/oauth/authorize",
+        "zhipu": "https://open.bigmodel.cn/usercenter/apikeys",
+    }
+    scopes = {
+        "openai": "openid profile email offline_access",
+        "gemini": "openid email profile https://www.googleapis.com/auth/generative-language",
+        "anthropic": "openid profile email offline_access",
+        "zhipu": "openid profile email offline_access",
+    }
+    query = urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": scopes[provider],
+        "state": f"user:{current_user.id}:provider:{provider}",
+        "access_type": "offline",
+        "prompt": "consent",
+    })
+    return RedirectResponse(url=f"{auth_urls[provider]}?{query}", status_code=302)
 
 
 @api_router.get("/api/admin/ai-config")
@@ -296,9 +503,13 @@ def api_save_user_ai_config(
     if not cfg:
         cfg = UserAIConfig(user_id=current_user.id, provider=provider)
         db.add(cfg)
+    if auth_type == "oauth":
+        credential = _extract_ai_credential(req.oauth_token or req.api_key)
+    else:
+        credential = _extract_ai_credential(req.api_key)
     cfg.auth_type = auth_type
     cfg.model = model
-    cfg.api_key_enc = encrypt_text(req.api_key.strip()) if req.api_key.strip() else ""
+    cfg.api_key_enc = encrypt_text(credential) if credential else ""
     cfg.base_url = req.base_url.strip() or (provider_meta["default_base_url"] if provider_meta else "")
     cfg.is_enabled = bool(req.is_enabled)
     db.commit()
@@ -346,6 +557,10 @@ def admin_panel_page(
     user_count = db.query(func.count(User.id)).scalar()
     users = db.query(User).order_by(User.created_at.desc()).limit(50).all()
 
+    role = "user"
+    if hasattr(current_user, "role") and current_user.role:
+        role = current_user.role
+
     return templates.TemplateResponse("admin_panel.html", {
         "request": request,
         "title": "管理后台",
@@ -353,6 +568,8 @@ def admin_panel_page(
         "flags": flags,
         "user_count": user_count,
         "users": [_user_to_dict(u) for u in users],
+        "role_labels": ROLE_LABELS,
+        "role": role,
     })
 
 
@@ -410,6 +627,48 @@ def api_toggle_user_active(
 
 class UserRoleUpdateRequest(BaseModel):
     role: str
+
+
+class AdminUserCreateRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "user"
+
+
+@api_router.post("/api/admin/users")
+def api_create_user(
+    req: AdminUserCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_admin(current_user)
+    username = req.username.strip()
+    email = req.email.strip().lower()
+    role = _normalize_role(req.role)
+    if len(username) < 2:
+        raise HTTPException(status_code=400, detail="用户名至少 2 位")
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="邮箱格式不正确")
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="密码至少 6 位")
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="邮箱已存在")
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(req.password),
+        is_active=True,
+        is_admin=role == "admin",
+        role=role,
+        is_email_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"ok": True, "user": _user_to_dict(user)}
 
 
 @api_router.post("/api/admin/users/{user_id}/role")
