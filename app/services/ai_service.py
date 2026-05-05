@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+import os
 import re
 import urllib.error
 import urllib.parse
@@ -17,6 +18,17 @@ class AIRequest:
     auth_type: str = "api_key"
 
 
+SKILL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "skills", "bruce-drawio")
+
+
+def _read_skill_file(filename: str) -> str:
+    path = os.path.join(SKILL_DIR, filename)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
+
+
 def generate_diagram_plan(req: AIRequest) -> dict:
     provider = (req.provider or "").lower().strip()
     if not provider:
@@ -28,6 +40,11 @@ def generate_diagram_plan(req: AIRequest) -> dict:
 
     prompt = _build_prompt(req.prompt)
     raw_text = _call_provider(req, prompt)
+
+    xml = _extract_drawio_xml(raw_text)
+    if xml:
+        return {"xml": xml, "provider": provider, "model": req.model, "direction": "TB"}
+
     plan = _parse_plan(raw_text)
     plan.setdefault("provider", provider)
     plan.setdefault("model", req.model)
@@ -38,13 +55,39 @@ def generate_diagram_plan(req: AIRequest) -> dict:
 
 
 def _build_prompt(user_prompt: str) -> str:
+    skill_md = _read_skill_file("SKILL.md")
+    best_practices = _read_skill_file(os.path.join("references", "best-practices.md"))
+
+    skill_section = ""
+    if skill_md:
+        skill_section = f"\n\n## Skill 规则\n{skill_md}"
+    if best_practices:
+        skill_section += f"\n\n## XML 模板与布局规则\n{best_practices}"
+
     return (
-        "你是流程图生成器。请只返回 JSON，不要解释，不要代码块。\n"
-        "JSON 格式必须是：{\"direction\":\"TB\"|\"LR\",\"items\":[[\"type\",\"label\"],...]}\n"
-        "type 仅使用以下值之一：terminator,process,decision,data,document,database,model,service,server,web,mobile,api,cache,queue,training,evaluation,experiment,paper,person,note,callout,cloud,code,deployment,augment,embedding,attention,loss,optimizer,metric,display,offpage,subroutine,preparation,manualInput,delay,connector\n"
-        "items 至少 3 个，最多 12 个，按流程顺序排列。\n"
-        f"用户描述：{user_prompt}"
+        "你是一个专业的图表生成器。用户会描述想要的图表，你需要直接生成完整的 drawio XML。\n\n"
+        "## 工作流程\n"
+        "1. 理解用户需求，判断图表类型（流程图、架构图、UML 时序图、类图、ER 图、思维导图、网络拓扑图等）\n"
+        "2. 直接生成完整的 drawio XML\n"
+        "3. 自检：确保所有 ID 唯一、坐标是 10 的倍数、节点不重叠、XML 格式正确\n"
+        "4. 只输出 XML，不要解释\n\n"
+        "## 输出格式\n"
+        "只输出完整的 drawio XML，以 <?xml 开头，以 </mxfile> 结尾。不要用代码块包裹，不要加任何解释文字。\n"
+        f"{skill_section}\n\n"
+        f"## 用户需求\n{user_prompt}"
     )
+
+
+def _extract_drawio_xml(text: str) -> str:
+    if not text:
+        return ""
+    match = re.search(r"(<\?xml[\s\S]*?</mxfile>)", text)
+    if match:
+        return match.group(1).strip()
+    match = re.search(r"(<mxfile[\s\S]*?</mxfile>)", text)
+    if match:
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' + match.group(1).strip()
+    return ""
 
 
 def _call_provider(req: AIRequest, prompt: str) -> str:
@@ -62,10 +105,11 @@ def _call_openai_compatible(req: AIRequest, prompt: str) -> str:
     payload = {
         "model": req.model,
         "messages": [
-            {"role": "system", "content": "你只输出 JSON。"},
+            {"role": "system", "content": "你只输出 drawio XML，不要解释。"},
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
+        "max_tokens": 8000,
     }
     data = _http_json(url, payload, req.api_key, req.auth_type)
     return _extract_text_from_openai(data)
@@ -76,7 +120,7 @@ def _call_anthropic(req: AIRequest, prompt: str) -> str:
     url = base_url + "/messages"
     payload = {
         "model": req.model,
-        "max_tokens": 1200,
+        "max_tokens": 8000,
         "temperature": 0.2,
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -93,7 +137,7 @@ def _call_gemini(req: AIRequest, prompt: str) -> str:
         url = f"{base_url}/models/{model}:generateContent?key={urllib.parse.quote(req.api_key)}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.2},
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8000},
     }
     data = _http_json(url, payload, req.api_key, req.auth_type, gemini=True)
     return _extract_text_from_gemini(data)
@@ -109,7 +153,7 @@ def _http_json(url: str, payload: dict, api_key: str, auth_type: str, anthropic:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=60) as resp:
+        with urllib.request.urlopen(request, timeout=120) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             return json.loads(raw)
     except urllib.error.HTTPError as exc:

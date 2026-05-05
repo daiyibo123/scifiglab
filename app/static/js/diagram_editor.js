@@ -248,9 +248,11 @@
                 event.dataTransfer.effectAllowed = 'copy';
             });
             tool.addEventListener('click', () => {
-                const x = stageWrap.scrollLeft + Math.max(150, stageWrap.clientWidth / 2 - 80);
-                const y = stageWrap.scrollTop + Math.max(100, stageWrap.clientHeight / 2 - 40);
-                addNode(tool.dataset.shape, x, y);
+                const rect = stageWrap.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                const point = clientToSvg({ clientX: x, clientY: y });
+                addNode(tool.dataset.shape, point.x, point.y);
             });
         });
 
@@ -337,7 +339,17 @@
         stageWrap.addEventListener('wheel', (event) => {
             if (!event.ctrlKey && !event.metaKey) return;
             event.preventDefault();
-            setZoom(state.zoom + (event.deltaY < 0 ? 0.08 : -0.08));
+            const rect = stageWrap.getBoundingClientRect();
+            const focus = clientToSvg({
+                clientX: event.clientX || (rect.left + rect.width / 2),
+                clientY: event.clientY || (rect.top + rect.height / 2)
+            });
+            setZoom(state.zoom + (event.deltaY < 0 ? 0.08 : -0.08), false);
+            requestAnimationFrame(() => {
+                stageWrap.scrollLeft = Math.max(0, focus.x * state.zoom - stageWrap.clientWidth / 2);
+                stageWrap.scrollTop = Math.max(0, focus.y * state.zoom - stageWrap.clientHeight / 2);
+                setStatus('缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
+            });
         }, { passive: false });
     }
 
@@ -497,7 +509,7 @@
             '<marker id="arrowHead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">',
             '<path d="M0,0 L0,6 L9,3 z" fill="#475569"></path>',
             '</marker>',
-            '<marker id="arrowTail" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto-start-reverse" markerUnits="strokeWidth">',
+            '<marker id="arrowStart" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto" markerUnits="strokeWidth">',
             '<path d="M9,0 L9,6 L0,3 z" fill="#475569"></path>',
             '</marker>',
             '</defs>'
@@ -732,7 +744,7 @@
         const stroke = selected ? '#4f46e5' : (edge.stroke || state.colors.stroke);
         const strokeWidth = type === 'thick' ? 3.4 : 2.2;
         const dash = type === 'dashed' ? ' stroke-dasharray="8 6"' : (type === 'dotted' ? ' stroke-dasharray="2 6" stroke-linecap="round"' : '');
-        const markerStart = type === 'bidirectional' ? ' marker-start="url(#arrowTail)"' : '';
+        const markerStart = type === 'bidirectional' ? ' marker-start="url(#arrowStart)"' : '';
         const markerEnd = type === 'noArrow' ? '' : ' marker-end="url(#arrowHead)"';
         return [
             '<g class="diagram-edge', selected ? ' selected' : '', '" data-edge-id="', edge.id, '">',
@@ -744,8 +756,8 @@
     }
 
     function edgePath(source, target, type) {
-        const a = anchorPoint(source, target);
-        const b = anchorPoint(target, source);
+        const a = anchorPoint(source, target, 12);
+        const b = anchorPoint(target, source, 12);
         if (type === 'straight' || type === 'dashed' || type === 'dotted' || type === 'thick' || type === 'noArrow' || type === 'bidirectional') {
             return 'M' + a.x + ',' + a.y + ' L' + b.x + ',' + b.y;
         }
@@ -769,14 +781,15 @@
     }
 
     function anchorPoint(node, other) {
+        const pad = arguments.length > 2 ? arguments[2] : 0;
         const cx = node.x + node.width / 2;
         const cy = node.y + node.height / 2;
         const ox = other.x + other.width / 2;
         const oy = other.y + other.height / 2;
         if (Math.abs(ox - cx) > Math.abs(oy - cy)) {
-            return ox > cx ? { x: node.x + node.width, y: cy } : { x: node.x, y: cy };
+            return ox > cx ? { x: node.x + node.width + pad, y: cy } : { x: node.x - pad, y: cy };
         }
-        return oy > cy ? { x: cx, y: node.y + node.height } : { x: cx, y: node.y };
+        return oy > cy ? { x: cx, y: node.y + node.height + pad } : { x: cx, y: node.y - pad };
     }
 
     function onNodePointerDown(event) {
@@ -962,6 +975,30 @@
                     ['deployment', '部署']
                 ]
             },
+            arch: {
+                label: '系统架构模板',
+                direction: 'LR',
+                items: [
+                    ['person', '用户'],
+                    ['web', '前端页面'],
+                    ['gateway', '网关'],
+                    ['service', '业务服务'],
+                    ['cache', '缓存'],
+                    ['database', '数据库'],
+                    ['deployment', '部署']
+                ]
+            },
+            ai: {
+                label: 'AI 流程模板',
+                direction: 'TB',
+                items: [
+                    ['data', '输入提示词'],
+                    ['api', '请求模型'],
+                    ['model', '生成内容'],
+                    ['evaluation', '结果检查'],
+                    ['paper', '输出使用']
+                ]
+            },
             api: {
                 label: 'API 服务模板',
                 direction: 'LR',
@@ -1014,11 +1051,13 @@
             return;
         }
         if (!state.aiConfig) {
-            setStatus('未找到可用的 AI 配置，请先到用户菜单里保存 AI 设置', 'busy');
+            setStatus('未找到可用的 AI 配置，请先到 AI 设置页面配置模型', 'busy');
             return;
         }
         const providerName = state.aiConfig.provider || 'AI';
-        setStatus('正在请求 ' + providerName + ' 生成流程图草稿…', 'busy');
+        setStatus('正在请求 ' + providerName + ' 生成图表…', 'busy');
+        const generateBtn = $('#aiGenerateBtn');
+        if (generateBtn) { generateBtn.disabled = true; generateBtn.textContent = 'AI 绘制中…'; }
         fetch('/api/diagrams/ai-plan', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1027,17 +1066,103 @@
             const data = await resp.json();
             if (!resp.ok || !data.ok) throw new Error(data.detail || data.msg || 'AI 生成失败');
             const plan = data.plan || {};
-            const items = Array.isArray(plan.items) && plan.items.length ? plan.items : parsePromptSteps(prompt);
-            const direction = plan.direction || state.layoutDirection || 'TB';
-            replaceDiagramWithItems(items, direction, 'AI 草稿');
             const modal = $('#aiDiagramModal');
             if (modal && window.bootstrap) {
                 const instance = window.bootstrap.Modal.getInstance(modal);
                 if (instance) instance.hide();
             }
-            setStatus('已根据描述生成可编辑草稿，当前使用 ' + providerName + ' 配置。', 'ok');
+            if (plan.xml) {
+                setStatus('AI 已生成图表，正在模拟绘制…', 'ok');
+                await animateDrawioXml(plan.xml);
+                setStatus('AI 绘图完成，当前使用 ' + providerName + ' 配置。', 'ok');
+            } else {
+                const items = Array.isArray(plan.items) && plan.items.length ? plan.items : parsePromptSteps(prompt);
+                const direction = plan.direction || state.layoutDirection || 'TB';
+                replaceDiagramWithItems(items, direction, 'AI 草稿');
+                setStatus('已根据描述生成可编辑草稿，当前使用 ' + providerName + ' 配置。', 'ok');
+            }
         }).catch((err) => {
             setStatus('AI 生成失败：' + err.message, 'busy');
+        }).finally(() => {
+            if (generateBtn) { generateBtn.disabled = false; generateBtn.innerHTML = '<i class="bi bi-magic me-1"></i>生成可编辑草稿'; }
+        });
+    }
+
+    function animateDrawioXml(xml) {
+        return new Promise((resolve) => {
+            const graphXml = extractGraphXml(xml);
+            if (!graphXml) { loadXmlToState(xml); render(); resolve(); return; }
+            const doc = new DOMParser().parseFromString(graphXml, 'text/xml');
+            if (doc.querySelector('parsererror')) { loadXmlToState(xml); render(); resolve(); return; }
+            const model = doc.querySelector('mxGraphModel');
+            if (!model) { loadXmlToState(xml); render(); resolve(); return; }
+            const cells = Array.from(model.querySelectorAll('mxCell'));
+            const parsedNodes = [];
+            const parsedEdges = [];
+            const nodeIds = new Set();
+            cells.forEach((cell) => {
+                if (cell.getAttribute('vertex') === '1') {
+                    const geo = cell.querySelector('mxGeometry');
+                    if (!geo) return;
+                    const style = parseStyle(cell.getAttribute('style') || '');
+                    const id = cell.getAttribute('id') || uniqueId('n');
+                    const x = parseFloat(geo.getAttribute('x') || '0');
+                    const y = parseFloat(geo.getAttribute('y') || '0');
+                    const w = Math.max(70, parseFloat(geo.getAttribute('width') || '140'));
+                    const h = Math.max(34, parseFloat(geo.getAttribute('height') || '60'));
+                    parsedNodes.push({ id, type: typeFromStyle(style), label: cell.getAttribute('value') || '', x, y, width: w, height: h, fill: style.fillColor || state.colors.fill, stroke: style.strokeColor || state.colors.stroke, font: style.fontColor || state.colors.font });
+                    nodeIds.add(id);
+                } else if (cell.getAttribute('edge') === '1') {
+                    const src = cell.getAttribute('source');
+                    const tgt = cell.getAttribute('target');
+                    if (nodeIds.has(src) && nodeIds.has(tgt)) {
+                        const style = parseStyle(cell.getAttribute('style') || '');
+                        parsedEdges.push({ id: cell.getAttribute('id') || uniqueId('e'), source: src, target: tgt, type: edgeTypeFromStyle(style), stroke: style.strokeColor || state.colors.stroke });
+                    }
+                }
+            });
+            if (!parsedNodes.length) { loadXmlToState(xml); render(); resolve(); return; }
+            pushHistory('AI 绘图');
+            state.local.nodes = [];
+            state.local.edges = [];
+            state.local.backgrounds = [];
+            selectNone();
+            const animNodes = [...parsedNodes];
+            const animEdges = [...parsedEdges];
+            let nodeIndex = 0;
+            function addNextNode() {
+                if (nodeIndex < animNodes.length) {
+                    const n = animNodes[nodeIndex];
+                    state.local.nodes.push(n);
+                    nodeIndex++;
+                    render(false);
+                    const wrap = $('#stageWrap');
+                    if (wrap) {
+                        const cx = n.x + n.width / 2;
+                        const cy = n.y + n.height / 2;
+                        const zoom = state.zoom || 1;
+                        wrap.scrollLeft = Math.max(0, cx * zoom - wrap.clientWidth / 2);
+                        wrap.scrollTop = Math.max(0, cy * zoom - wrap.clientHeight / 2);
+                    }
+                    setTimeout(addNextNode, 180);
+                } else {
+                    let edgeIndex = 0;
+                    function addNextEdge() {
+                        if (edgeIndex < animEdges.length) {
+                            state.local.edges.push(animEdges[edgeIndex]);
+                            edgeIndex++;
+                            render(false);
+                            setTimeout(addNextEdge, 100);
+                        } else {
+                            autoLayout(state.layoutDirection || 'TB');
+                            render();
+                            resolve();
+                        }
+                    }
+                    addNextEdge();
+                }
+            }
+            addNextNode();
         });
     }
 
@@ -1117,8 +1242,8 @@
         requestAnimationFrame(() => {
             stageWrap.scrollLeft = Math.max(0, centerX * state.zoom - stageWrap.clientWidth / 2);
             stageWrap.scrollTop = Math.max(0, centerY * state.zoom - stageWrap.clientHeight / 2);
+            if (showStatus !== false) setStatus('缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
         });
-        if (showStatus !== false) setStatus('缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
     }
 
     function fitCanvas() {
@@ -1127,9 +1252,12 @@
         const height = Math.max(CANVAS_MIN_HEIGHT, bounds.maxY - bounds.minY + CANVAS_PADDING * 2);
         const zoomX = (stageWrap.clientWidth - 24) / width;
         const zoomY = (stageWrap.clientHeight - 24) / height;
-        setZoom(Math.min(1, zoomX, zoomY));
-        stageWrap.scrollLeft = 0;
-        stageWrap.scrollTop = 0;
+        setZoom(Math.min(1, zoomX, zoomY), false);
+        requestAnimationFrame(() => {
+            stageWrap.scrollLeft = 0;
+            stageWrap.scrollTop = 0;
+            setStatus('已适应画布，缩放 ' + Math.round(state.zoom * 100) + '%', 'ok');
+        });
     }
 
     function selectNone() {
@@ -3087,13 +3215,13 @@
     }
 
     function clientToSvg(event) {
-        const point = canvas.createSVGPoint();
-        point.x = event.clientX;
-        point.y = event.clientY;
-        const matrix = canvas.getScreenCTM();
-        if (!matrix) return { x: 0, y: 0 };
-        const out = point.matrixTransform(matrix.inverse());
-        return { x: out.x, y: out.y };
+        const rect = stageWrap.getBoundingClientRect();
+        const zoom = state.zoom || 1;
+        const scrollX = stageWrap.scrollLeft || 0;
+        const scrollY = stageWrap.scrollTop || 0;
+        const x = (event.clientX - rect.left + scrollX) / zoom;
+        const y = (event.clientY - rect.top + scrollY) / zoom;
+        return { x: x, y: y };
     }
 
     function loadImage(src) {

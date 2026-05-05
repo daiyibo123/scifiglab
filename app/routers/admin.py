@@ -20,6 +20,13 @@ from app.core.templates import templates
 from app.database.session import get_db
 from app.database.models import User, SiteConfig, Announcement, UserAIConfig
 
+ROLE_LABELS = {
+    "user": "普通用户",
+    "vip": "VIP",
+    "svip": "SVIP",
+    "admin": "管理员",
+}
+
 router = APIRouter(tags=["admin"])
 api_router = APIRouter(tags=["admin-api"])
 
@@ -55,6 +62,15 @@ def _require_admin(current_user: User):
         raise HTTPException(status_code=403, detail="需要管理员权限")
 
 
+def _normalize_role(role: str) -> str:
+    role = (role or "").strip().lower()
+    return role if role in ROLE_LABELS else "user"
+
+
+def _role_label(role: str) -> str:
+    return ROLE_LABELS.get(role, ROLE_LABELS["user"])
+
+
 def _get_config(db: Session, key: str, default: str = "") -> str:
     row = db.query(SiteConfig).filter(SiteConfig.key == key).first()
     return row.value if row else default
@@ -80,6 +96,21 @@ def _ai_config_to_dict(cfg: UserAIConfig) -> dict:
         "is_enabled": cfg.is_enabled,
         "api_key": decrypt_text(cfg.api_key_enc) if cfg.api_key_enc else "",
         "has_api_key": bool(cfg.api_key_enc),
+    }
+
+
+def _user_to_dict(user: User) -> dict:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "is_active": user.is_active,
+        "is_admin": user.is_admin,
+        "role": getattr(user, "role", "user") or "user",
+        "role_label": _role_label(getattr(user, "role", "user") or "user"),
+        "is_email_verified": user.is_email_verified,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None,
     }
 
 
@@ -178,6 +209,7 @@ def api_admin_init(
         password_hash=hash_password(req.password),
         is_active=True,
         is_admin=True,
+        role="admin",
         is_email_verified=True,
     )
     db.add(admin)
@@ -196,6 +228,21 @@ class AIConfigUpsertRequest(BaseModel):
     api_key: str = ""
     base_url: str = ""
     is_enabled: bool = True
+
+
+@router.get("/settings/ai")
+def ai_settings_page(
+    request: Request,
+    current_user=Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("ai_settings.html", {
+        "request": request,
+        "title": "AI 设置",
+        "current_user": current_user,
+    })
 
 
 @api_router.get("/api/admin/ai-config")
@@ -218,12 +265,17 @@ def api_save_user_ai_config(
 ):
     provider = req.provider.strip().lower()
     provider_meta = next((p for p in AI_PROVIDERS if p["key"] == provider), None)
-    if not provider_meta:
-        raise HTTPException(status_code=400, detail="不支持的模型厂商")
-    if not _provider_enabled(db, provider):
-        raise HTTPException(status_code=400, detail="该模型厂商已被管理员关闭")
-    auth_type = req.auth_type if req.auth_type in provider_meta["auth_types"] else provider_meta["auth_types"][0]
-    model = req.model.strip() or provider_meta.get("default_model", "")
+    if provider != "custom":
+        if not provider_meta:
+            raise HTTPException(status_code=400, detail="不支持的模型厂商")
+        if not _provider_enabled(db, provider):
+            raise HTTPException(status_code=400, detail="该模型厂商已被管理员关闭")
+    auth_type = req.auth_type
+    model = req.model.strip()
+    if provider != "custom" and provider_meta:
+        if auth_type not in provider_meta["auth_types"]:
+            auth_type = provider_meta["auth_types"][0]
+        model = model or provider_meta.get("default_model", "")
     if not model:
         raise HTTPException(status_code=400, detail="请填写模型名称")
     cfg = db.query(UserAIConfig).filter(
@@ -236,7 +288,7 @@ def api_save_user_ai_config(
     cfg.auth_type = auth_type
     cfg.model = model
     cfg.api_key_enc = encrypt_text(req.api_key.strip()) if req.api_key.strip() else ""
-    cfg.base_url = req.base_url.strip() or provider_meta["default_base_url"]
+    cfg.base_url = req.base_url.strip() or (provider_meta["default_base_url"] if provider_meta else "")
     cfg.is_enabled = bool(req.is_enabled)
     db.commit()
     db.refresh(cfg)
@@ -272,7 +324,7 @@ def admin_panel_page(
         "current_user": current_user,
         "flags": flags,
         "user_count": user_count,
-        "users": users,
+        "users": [_user_to_dict(u) for u in users],
     })
 
 
@@ -325,7 +377,52 @@ def api_toggle_user_active(
         raise HTTPException(status_code=400, detail="不能禁用自己")
     user.is_active = not user.is_active
     db.commit()
-    return {"ok": True, "is_active": user.is_active}
+    return {"ok": True, "is_active": user.is_active, "user": _user_to_dict(user)}
+
+
+class UserRoleUpdateRequest(BaseModel):
+    role: str
+
+
+@api_router.post("/api/admin/users/{user_id}/role")
+def api_update_user_role(
+    user_id: int,
+    req: UserRoleUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_admin(current_user)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if user.id == current_user.id and _normalize_role(req.role) != "admin":
+        raise HTTPException(status_code=400, detail="不能降低自己的管理员权限")
+    role = _normalize_role(req.role)
+    user.role = role
+    user.is_admin = role == "admin"
+    db.commit()
+    db.refresh(user)
+    return {"ok": True, "user": _user_to_dict(user)}
+
+
+@router.get("/admin/users")
+def admin_users_page(
+    request: Request,
+    current_user=Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=302)
+    if not current_user.is_admin:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return templates.TemplateResponse("admin_users.html", {
+        "request": request,
+        "title": "用户管理",
+        "current_user": current_user,
+        "users": [_user_to_dict(u) for u in users],
+        "role_labels": ROLE_LABELS,
+    })
 
 
 # ── API: Git pull ───────────────────────────────────────────────────────

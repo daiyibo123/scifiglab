@@ -368,6 +368,8 @@
             <button class="template-tool" data-template="ml" title="数据集、训练、模型、评估、论文"><i class="bi bi-cpu"></i><span>模型训练</span></button>
             <button class="template-tool" data-template="deeplearn" title="数据增强、表示、骨干网络、注意力、训练、评估"><i class="bi bi-robot"></i><span>深度学习</span></button>
             <button class="template-tool" data-template="computer" title="用户、前端、接口、服务、数据库、部署"><i class="bi bi-pc-display"></i><span>计算机系统</span></button>
+            <button class="template-tool" data-template="arch" title="用户、前端、网关、服务、缓存、数据库、部署"><i class="bi bi-diagram-3"></i><span>系统架构</span></button>
+            <button class="template-tool" data-template="ai" title="提示词、模型请求、生成、检查、输出"><i class="bi bi-stars"></i><span>AI 流程</span></button>
             <button class="template-tool" data-template="api" title="用户、API、模型、数据库、输出"><i class="bi bi-hdd-network"></i><span>API 服务</span></button>
             <button class="template-tool" data-template="experiment" title="实验设计、变量、结果、指标"><i class="bi bi-beaker"></i><span>实验流程</span></button>
             <button class="template-tool" data-template="paper" title="阅读、假设、实验、图表、论文"><i class="bi bi-journal-text"></i><span>论文产出</span></button>
@@ -470,7 +472,7 @@
             </div>
             <div class="modal-body">
                 <div class="ai-note mb-3">
-                    现在先按编辑器已有按钮能力执行：选择模板、放置图形、连接节点、切换布局并美化，生成的都是可编辑节点。后续在用户管理里配置 OpenAI、通义、智谱等官方 API 和密钥后，这里会由模型输出操作计划，再由页面执行同一套按钮能力。
+                    支持流程图、架构图、UML 时序图/类图、ER 图、思维导图、网络拓扑图等多种图表类型。AI 会直接生成可编辑的完整图表，绘制过程有动画模拟。
                 </div>
                 <label for="aiPromptInput" class="form-label fw-bold">描述你想要的流程图</label>
                 <textarea id="aiPromptInput" class="form-control ai-prompt-box" placeholder="例如：画一个从数据采集、清洗、模型训练、评估到论文输出的流程图，包含异常分支"></textarea>

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}AI 设置 — SciFigLab{% endblock %}
+
+{% block extra_head %}
+<style>
+.ai-page{max-width:780px}
+.ai-card{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:1rem;padding:1.5rem;margin-bottom:1rem;box-shadow:0 4px 16px rgba(15,23,42,.04)}
+.ai-card h5{font-size:1rem;font-weight:800;margin-bottom:.75rem}
+.ai-config-row{display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;border:1px solid var(--panel-border);border-radius:.7rem;margin-bottom:.5rem;background:var(--app-bg);transition:all .15s}
+.ai-config-row:hover{border-color:#6366f1}
+.ai-config-row .provider-name{font-weight:700;font-size:.88rem;min-width:100px}
+.ai-config-row .provider-model{font-size:.82rem;color:var(--text-sub);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-config-row .provider-status{font-size:.76rem;padding:.2rem .55rem;border-radius:999px;font-weight:700}
+.ai-config-row .provider-status.on{background:#dcfce7;color:#16a34a}
+.ai-config-row .provider-status.off{background:#fee2e2;color:#ef4444}
+.ai-form .form-label{font-size:.82rem;font-weight:700}
+.ai-form .form-text{font-size:.74rem}
+.ai-custom-fields{display:none;border-top:1px dashed var(--panel-border);margin-top:.75rem;padding-top:.75rem}
+.ai-custom-fields.show{display:block}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ai-page">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h4 class="fw-bold mb-0" style="font-size:1.15rem"><i class="bi bi-stars me-2 text-primary"></i>AI 设置</h4>
+            <small class="text-muted">配置模型厂商和密钥，用于流程图 AI 绘图等功能</small>
+        </div>
+    </div>
+
+    <!-- Existing configs -->
+    <div class="ai-card">
+        <h5><i class="bi bi-list-check me-1"></i>已保存的配置</h5>
+        <div id="configList">
+            <div class="text-muted" style="font-size:.82rem">正在加载…</div>
+        </div>
+    </div>
+
+    <!-- Add / Edit form -->
+    <div class="ai-card ai-form">
+        <h5><i class="bi bi-plus-circle me-1"></i>新增配置</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">模型厂商</label>
+                <select id="aiProvider" class="form-select"></select>
+                <div class="form-text" id="aiProviderHint">请选择厂商</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">认证方式</label>
+                <select id="aiAuthType" class="form-select">
+                    <option value="api_key">API Key</option>
+                    <option value="oauth">OAuth</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">模型名称</label>
+                <input id="aiModel" class="form-control" placeholder="例如 gpt-4.1-mini / gemini-2.5-pro">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Base URL</label>
+                <input id="aiBaseUrl" class="form-control" placeholder="自动填写，可修改">
+            </div>
+            <div class="col-12">
+                <label class="form-label">API Key</label>
+                <input id="aiApiKey" class="form-control" type="password" placeholder="输入后保存到服务器">
+            </div>
+            <!-- Custom provider extra fields -->
+            <div class="col-12">
+                <div class="ai-custom-fields" id="customFields">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">调用模型（实际请求的 model 参数）</label>
+                            <input id="customCallModel" class="form-control" placeholder="例如 gpt-4o / deepseek-chat">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">请求模型（显示用名称，可选）</label>
+                            <input id="customReqModel" class="form-control" placeholder="例如 我的自定义模型">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 d-flex align-items-center justify-content-between gap-2">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="aiEnabled" checked>
+                    <label class="form-check-label" for="aiEnabled">启用该配置</label>
+                </div>
+                <button type="button" class="btn btn-primary" id="aiSaveBtn"><i class="bi bi-check-lg me-1"></i>保存</button>
+            </div>
+        </div>
+        <div class="mt-2 small text-muted" id="aiHint"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var providerSelect = document.getElementById('aiProvider');
+    var authType = document.getElementById('aiAuthType');
+    var modelInput = document.getElementById('aiModel');
+    var baseUrlInput = document.getElementById('aiBaseUrl');
+    var apiKeyInput = document.getElementById('aiApiKey');
+    var enabledCheck = document.getElementById('aiEnabled');
+    var saveBtn = document.getElementById('aiSaveBtn');
+    var hint = document.getElementById('aiHint');
+    var configList = document.getElementById('configList');
+    var providerHint = document.getElementById('aiProviderHint');
+    var customFields = document.getElementById('customFields');
+    var customCallModel = document.getElementById('customCallModel');
+    var customReqModel = document.getElementById('customReqModel');
+    var providerMeta = [];
+
+    function isCustom() { return providerSelect.value === 'custom'; }
+
+    function fillProviderOptions() {
+        var enabled = providerMeta.filter(function(p) { return p.enabled !== false; });
+        var html = enabled.map(function(p) {
+            return '<option value="' + p.key + '">' + p.name + '</option>';
+        }).join('');
+        html += '<option value="custom">自定义</option>';
+        providerSelect.innerHTML = html;
+    }
+
+    function updateProviderDefaults() {
+        if (isCustom()) {
+            customFields.classList.add('show');
+            baseUrlInput.placeholder = '输入自定义 API 地址';
+            modelInput.placeholder = '输入模型名称';
+            providerHint.textContent = '自定义厂商：填写 API 地址和模型名称';
+            return;
+        }
+        customFields.classList.remove('show');
+        var meta = providerMeta.find(function(p) { return p.key === providerSelect.value; });
+        if (!meta) return;
+        var prevBaseUrl = baseUrlInput.dataset.default || '';
+        var prevModel = modelInput.dataset.default || '';
+        if (!baseUrlInput.value || baseUrlInput.value === prevBaseUrl) baseUrlInput.value = meta.default_base_url || '';
+        if (!modelInput.value || modelInput.value === prevModel) modelInput.value = meta.default_model || '';
+        authType.innerHTML = (meta.auth_types || ['api_key']).map(function(t) {
+            return '<option value="' + t + '">' + (t === 'oauth' ? 'OAuth' : 'API Key') + '</option>';
+        }).join('');
+        baseUrlInput.dataset.default = meta.default_base_url || '';
+        modelInput.dataset.default = meta.default_model || '';
+        providerHint.textContent = '推荐模型：' + (meta.default_model || '未设置') + '，默认接口：' + (meta.default_base_url || '未设置');
+    }
+
+    function clearForm() {
+        modelInput.value = '';
+        baseUrlInput.value = '';
+        apiKeyInput.value = '';
+        customCallModel.value = '';
+        customReqModel.value = '';
+        enabledCheck.checked = true;
+        baseUrlInput.dataset.default = '';
+        modelInput.dataset.default = '';
+    }
+
+    async function loadConfigs() {
+        try {
+            var resp = await fetch('/api/admin/ai-config');
+            var data = await resp.json();
+            providerMeta = data.providers || [];
+            fillProviderOptions();
+            providerSelect.value = 'openai';
+            updateProviderDefaults();
+            renderConfigList(data.configs || []);
+        } catch (e) {
+            configList.innerHTML = '<div class="text-danger" style="font-size:.82rem">加载失败：' + e.message + '</div>';
+        }
+    }
+
+    function renderConfigList(configs) {
+        if (!configs.length) {
+            configList.innerHTML = '<div class="text-muted" style="font-size:.82rem">暂无已保存的配置，请在下方新增。</div>';
+            return;
+        }
+        configList.innerHTML = configs.map(function(c) {
+            var name = c.provider;
+            var meta = providerMeta.find(function(p) { return p.key === c.provider; });
+            if (meta) name = meta.name;
+            else if (c.provider === 'custom') name = '自定义';
+            return '<div class="ai-config-row">'
+                + '<span class="provider-name">' + name + '</span>'
+                + '<span class="provider-model">' + (c.model || '未设置') + ' &middot; ' + (c.base_url || '') + '</span>'
+                + '<span class="provider-status ' + (c.is_enabled ? 'on' : 'off') + '">' + (c.is_enabled ? '启用' : '禁用') + '</span>'
+                + '</div>';
+        }).join('');
+    }
+
+    providerSelect.addEventListener('change', function() {
+        updateProviderDefaults();
+    });
+
+    saveBtn.addEventListener('click', async function() {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中…';
+        var provider = providerSelect.value;
+        var body = {
+            provider: provider,
+            auth_type: authType.value,
+            model: isCustom() ? (customCallModel.value || modelInput.value) : modelInput.value,
+            api_key: apiKeyInput.value,
+            base_url: baseUrlInput.value,
+            is_enabled: enabledCheck.checked,
+        };
+        if (isCustom() && customReqModel.value) {
+            body.request_model = customReqModel.value;
+        }
+        try {
+            var resp = await fetch('/api/admin/ai-config', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            });
+            var data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data.detail || '保存失败');
+            hint.textContent = '已保存。';
+            clearForm();
+            loadConfigs();
+        } catch (e) {
+            hint.textContent = '保存失败：' + e.message;
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>保存';
+        }
+    });
+
+    loadConfigs();
+});
+</script>
+{% endblock %}

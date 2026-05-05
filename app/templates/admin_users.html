@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}用户管理 — SciFigLab{% endblock %}
+
+{% block extra_head %}
+<style>
+.um-page{max-width:960px}
+.um-card{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;box-shadow:0 4px 16px rgba(15,23,42,.04)}
+.um-table{font-size:.84rem}
+.um-table th{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-sub);font-weight:700;border-bottom:2px solid var(--panel-border)}
+.um-table td{vertical-align:middle;padding:.6rem .5rem}
+.um-role-select{font-size:.78rem;padding:.2rem .4rem;border-radius:6px;border:1px solid var(--panel-border);background:var(--panel-bg);color:var(--text-main);min-width:90px}
+.um-status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.3rem}
+.um-status.active{background:#22c55e}
+.um-status.inactive{background:#ef4444}
+.um-status.admin{background:#6366f1}
+.um-badge{font-size:.72rem;padding:.2rem .5rem;border-radius:999px;font-weight:700}
+.um-badge.user{background:#e0f2fe;color:#0284c7}
+.um-badge.vip{background:#fef9c3;color:#ca8a04}
+.um-badge.svip{background:#fce7f3;color:#db2777}
+.um-badge.admin{background:#eef2ff;color:#4f46e5}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="um-page">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h4 class="fw-bold mb-0" style="font-size:1.15rem"><i class="bi bi-people me-2 text-primary"></i>用户管理</h4>
+            <small class="text-muted">管理用户角色和状态，共 {{ users|length }} 个用户</small>
+        </div>
+    </div>
+
+    <div class="um-card">
+        <div class="table-responsive">
+            <table class="table table-hover um-table mb-0">
+                <thead>
+                    <tr>
+                        <th>用户</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>
+                        <strong>{{ u.username }}</strong>
+                        {% if u.id == current_user.id %}<small class="text-muted ms-1">(你)</small>{% endif %}
+                    </td>
+                    <td><small>{{ u.email }}</small></td>
+                    <td>
+                        <select class="um-role-select" data-user-id="{{ u.id }}" onchange="updateRole(this)">
+                            {% for key, label in role_labels.items() %}
+                            <option value="{{ key }}" {% if u.role == key %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        {% if u.is_admin %}
+                        <span class="um-badge admin">管理员</span>
+                        {% elif u.is_active %}
+                        <span class="um-badge {{ u.role }}">{{ u.role_label }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary" style="font-size:.72rem">已禁用</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ u.created_at[:10] if u.created_at else '-' }}</small></td>
+                    <td>
+                        {% if u.id != current_user.id %}
+                        <button class="btn btn-sm btn-outline-secondary" style="font-size:.76rem;padding:.2rem .5rem" onclick="toggleActive({{ u.id }}, this)">
+                            {% if u.is_active %}禁用{% else %}启用{% endif %}
+                        </button>
+                        {% else %}
+                        <span class="text-muted" style="font-size:.76rem">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function updateRole(select) {
+    var userId = select.getAttribute('data-user-id');
+    var role = select.value;
+    try {
+        var resp = await fetch('/api/admin/users/' + userId + '/role', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ role: role }),
+        });
+        var data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.detail || '更新失败');
+        location.reload();
+    } catch (e) {
+        alert('角色更新失败：' + e.message);
+    }
+}
+async function toggleActive(userId, btn) {
+    try {
+        var resp = await fetch('/api/admin/users/' + userId + '/toggle-active', { method: 'POST' });
+        var data = await resp.json();
+        if (!resp.ok || !data.ok) throw new Error(data.detail || '操作失败');
+        location.reload();
+    } catch (e) {
+        alert('操作失败：' + e.message);
+    }
+}
+</script>
+{% endblock %}
